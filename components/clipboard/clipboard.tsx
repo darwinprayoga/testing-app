@@ -25,6 +25,7 @@ export function Clipboard({ isMobile = false }: ClipboardProps) {
   const { currentLanguage } = useLanguage();
   const { getItem, setItem, removeItem, isStorageReady } = useStorage();
 
+  // Load data from storage whenever the component is mounted or becomes visible
   useEffect(() => {
     const loadDataFromStorage = async () => {
       if (!isStorageReady) return;
@@ -42,28 +43,97 @@ export function Clipboard({ isMobile = false }: ClipboardProps) {
           if (Array.isArray(savedHistory) && savedHistory.length > 0) {
             setHistory(savedHistory);
           } else {
-            loadDummyData();
+            // Only load dummy data if there's no history AND no current text/image
+            if (!savedText && !savedImage) {
+              await loadDummyData();
+            }
+          }
+        } else {
+          // Only load dummy data if there's no saved history AND no current text/image
+          if (!savedText && !savedImage) {
+            await loadDummyData();
           }
         }
 
         const savedEditMode = await getItem("clipboardEditMode");
         setIsEditMode(savedEditMode);
-        console.log(isEditMode);
 
         const savedShowHistory = await getItem("clipboardShowHistory");
         setShowHistory(savedShowHistory);
-        console.log(showHistory);
       } catch (error) {
         console.error("Error during initialization", error);
-        loadDummyData();
+        // Only load dummy data if there's a serious error and no current content
+        if (!currentText && !currentImage) {
+          await loadDummyData();
+        }
       }
     };
 
     loadDataFromStorage();
   }, [currentLanguage, isStorageReady, getItem, setItem]);
 
+  // Track data initialization to prevent redundant loading
+  const dataInitializedRef = useRef(false);
+  
+  // This effect ensures data is loaded whenever the component is mounted
+  // And prevents loss of history when switching tabs
+  useEffect(() => {
+    // Force reload from storage when component mounts
+    const reloadFromStorage = async () => {
+      if (!isStorageReady) return;
+      
+      try {
+        // Always get the latest data from storage
+        const savedHistory = await getItem("clipboardHistory");
+        if (savedHistory && Array.isArray(savedHistory) && savedHistory.length > 0) {
+          setHistory(savedHistory);
+          dataInitializedRef.current = true;
+        }
+      } catch (error) {
+        console.error("Error reloading data on mount", error);
+      }
+    };
+    
+    // Only reload if not initialized yet (prevents duplicate loading)
+    if (!dataInitializedRef.current) {
+      reloadFromStorage();
+    }
+    
+    return () => {
+      // We don't reset dataInitializedRef here to maintain state across tab switches
+    };
+  }, [isStorageReady, getItem]);
+
   // Helper function to load dummy data
-  const loadDummyData = () => {
+  const loadDummyData = async () => {
+    // Double-check storage first before loading dummy data
+    if (isStorageReady) {
+      try {
+        // Check if we have any real data in storage
+        const savedHistory = await getItem("clipboardHistory");
+        const savedText = await getItem("clipboardText");
+        const savedImage = await getItem("clipboardImage");
+        
+        // If any real data exists, use that instead of dummy data
+        if (
+          (savedHistory && Array.isArray(savedHistory) && savedHistory.length > 0) ||
+          savedText ||
+          savedImage ||
+          history.length > 0 ||
+          currentText || 
+          currentImage
+        ) {
+          // We have real data, don't overwrite with dummy data
+          if (savedHistory && Array.isArray(savedHistory) && savedHistory.length > 0) {
+            setHistory(savedHistory);
+          }
+          return;
+        }
+      } catch (error) {
+        console.error("Error checking for existing data", error);
+      }
+    }
+
     // Get culturally relevant jokes for the current language
     const jokeItems = getRandomJokes(currentLanguage, "clipboard", 4);
 
