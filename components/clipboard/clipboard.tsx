@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLanguage } from "@/contexts/language-context";
 import { useActivity } from "@/contexts/activity-context";
 import { useStorage } from "@/contexts/storage-context";
+import { useClipboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { getRandomJokes } from "@/data/jokes";
+import { useToast } from "@/components/ui/use-toast";
 import type { ClipboardItem, ClipboardProps } from "@/types/clipboard";
 import { ClipboardContent } from "./clipboard-content";
 import { ClipboardControls } from "./clipboard-controls";
@@ -22,8 +24,9 @@ export function Clipboard({ isMobile = false }: ClipboardProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { recordActivity } = useActivity();
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage, t } = useLanguage();
   const { getItem, setItem, removeItem, isStorageReady } = useStorage();
+  const { toast } = useToast();
 
   useEffect(() => {
     const loadDataFromStorage = async () => {
@@ -47,12 +50,14 @@ export function Clipboard({ isMobile = false }: ClipboardProps) {
         }
 
         const savedEditMode = await getItem("clipboardEditMode");
-        setIsEditMode(savedEditMode);
-        console.log(isEditMode);
+        if (savedEditMode !== null) {
+          setIsEditMode(savedEditMode === true || savedEditMode === "true");
+        }
 
         const savedShowHistory = await getItem("clipboardShowHistory");
-        setShowHistory(savedShowHistory);
-        console.log(showHistory);
+        if (savedShowHistory !== null) {
+          setShowHistory(savedShowHistory === true || savedShowHistory === "true");
+        }
       } catch (error) {
         console.error("Error during initialization", error);
         loadDummyData();
@@ -342,6 +347,48 @@ export function Clipboard({ isMobile = false }: ClipboardProps) {
       }, 0);
     }
   };
+
+  // Keyboard shortcut handlers
+  const handlePasteShortcut = useCallback(() => {
+    handlePaste();
+  }, [handlePaste]);
+
+  const handleClearShortcut = useCallback(() => {
+    if (currentText || currentImage) {
+      handleClearText();
+    }
+  }, [currentText, currentImage, handleClearText]);
+
+  const handleCopyShortcut = useCallback(() => {
+    if (currentText) {
+      navigator.clipboard.writeText(currentText)
+        .then(() => {
+          toast({
+            title: t("copiedToClipboard"),
+            description: t("textCopiedSuccess"),
+            duration: 2000,
+          });
+        })
+        .catch((error) => {
+          console.error("Failed to copy text:", error);
+        });
+    }
+  }, [currentText, t, toast]);
+
+  const handleEscapeShortcut = useCallback(() => {
+    setIsEditMode(false);
+    if (textareaRef.current) {
+      textareaRef.current.blur();
+    }
+  }, []);
+
+  // Register keyboard shortcuts
+  useClipboardShortcuts({
+    onCopy: handleCopyShortcut,
+    onPaste: handlePasteShortcut,
+    onClear: handleClearShortcut,
+    onEscape: handleEscapeShortcut,
+  }, containerRef);
 
   return (
     <>
