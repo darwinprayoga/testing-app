@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Archive, Trash2 } from "lucide-react";
@@ -10,6 +10,7 @@ import type { TodoItem } from "@/types/todo";
 import { TodoList } from "./todo-list";
 import { TodoForm } from "./todo-form";
 import { TodoEtaDialog } from "./todo-eta-dialog";
+import { TodoSearch } from "./todo-search";
 import { getRandomJokes } from "@/data/jokes";
 
 export function Todo() {
@@ -20,6 +21,9 @@ export function Todo() {
   const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null);
   const [selectedEtaDate, setSelectedEtaDate] = useState<Date>(new Date());
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [filteredTodos, setFilteredTodos] = useState<TodoItem[]>([]);
   const { t, currentLanguage } = useLanguage();
   const { getItem, setItem, isStorageReady } = useStorage();
 
@@ -66,10 +70,65 @@ export function Todo() {
     loadTodosFromStorage();
   }, [isStorageReady, currentLanguage, getItem, setItem]);
 
-  // Clear selected tasks when changing tabs
+  // Save and restore selected tasks when changing tabs
   useEffect(() => {
-    setSelectedTasks([]);
-  }, [activeTab]);
+    const saveSelectedTasks = async () => {
+      if (!isStorageReady) return;
+      try {
+        await setItem(`todoSelectedTasks_${activeTab}`, selectedTasks);
+      } catch (error) {
+        console.error("Error saving selected tasks:", error);
+      }
+    };
+    saveSelectedTasks();
+  }, [selectedTasks, activeTab, isStorageReady, setItem]);
+  
+  // Load selected tasks when changing tabs
+  useEffect(() => {
+    const loadSelectedTasks = async () => {
+      if (!isStorageReady) return;
+      try {
+        const savedTasks = await getItem(`todoSelectedTasks_${activeTab}`);
+        if (savedTasks && Array.isArray(savedTasks)) {
+          setSelectedTasks(savedTasks);
+        } else {
+          setSelectedTasks([]);
+        }
+      } catch (error) {
+        console.error("Error loading selected tasks:", error);
+        setSelectedTasks([]);
+      }
+    };
+    loadSelectedTasks();
+  }, [activeTab, isStorageReady, getItem]);
+  
+  // Filter todos based on search term and priority filter
+  const filterTodos = useCallback(() => {
+    if (!todos) return [];
+    
+    return todos.filter(todo => {
+      // Filter by active/archived status
+      const statusMatch = activeTab === "active" ? !todo.archived : todo.archived;
+      if (!statusMatch) return false;
+      
+      // Filter by search term
+      const searchMatch = searchTerm.trim() === '' || 
+        todo.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        todo.description.toLowerCase().includes(searchTerm.toLowerCase());
+      if (!searchMatch) return false;
+      
+      // Filter by priority
+      const priorityMatch = priorityFilter === "all" || todo.priority === priorityFilter;
+      if (!priorityMatch) return false;
+      
+      return true;
+    });
+  }, [todos, activeTab, searchTerm, priorityFilter]);
+  
+  // Update filtered todos when filters or todos change
+  useEffect(() => {
+    setFilteredTodos(filterTodos());
+  }, [todos, activeTab, searchTerm, priorityFilter, filterTodos]);
 
   // Helper function to load dummy data
   const loadDummyData = () => {
@@ -134,16 +193,17 @@ export function Todo() {
   // Add a new task
   const addTask = (text: string) => {
     if (text.trim()) {
-      const oneHourOneMinuteLater = Date.now() + (60 + 60 * 60) * 1000;
+      // Set creation timestamp to current time, not future time
+      const currentTime = Date.now();
 
       const newTodo: TodoItem = {
-        id: Date.now().toString(),
+        id: currentTime.toString(),
         text: text,
         description: "",
         completed: false,
         archived: false,
         priority: "-",
-        createdAt: oneHourOneMinuteLater,
+        createdAt: currentTime,
       };
       setTodos([...todos, newTodo]);
       setIsAdding(false);
@@ -263,6 +323,15 @@ export function Todo() {
   const archivedTasksCount = todos.filter((todo) => todo.archived).length;
   const allArchivedSelected =
     archivedTasksCount > 0 && selectedTasks.length === archivedTasksCount;
+    
+  // Handlers for search and filter
+  const handleSearch = useCallback((term: string) => {
+    setSearchTerm(term);
+  }, []);
+  
+  const handleFilterChange = useCallback((priority: string) => {
+    setPriorityFilter(priority);
+  }, []);
 
   return (
     <div className="flex flex-col border rounded-lg min-h-[400px] todo-container">
@@ -281,10 +350,16 @@ export function Todo() {
           </TabsList>
         </Tabs>
       </div>
+      
+      <TodoSearch 
+        onSearch={handleSearch}
+        onFilterChange={handleFilterChange}
+        disabled={todos.length === 0}
+      />
 
       <div className="flex-1">
         <TodoList
-          todos={todos}
+          todos={filteredTodos}
           activeTab={activeTab}
           onToggleComplete={toggleComplete}
           onArchive={archiveTask}
