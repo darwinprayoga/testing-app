@@ -1,0 +1,248 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+
+    --radius: 0.5rem;
+
+    --main-color: #3b82f6;
+    --main-color-hover: #2563eb;
+    --app-background: #ffffff;
+    --app-text: #333333;
+    --app-subtext: #666666;
+    --app-border: #e5e7eb;
+    --app-card: #f9fafb;
+    --app-accent: #3b82f6;
+    --font-family: "Inter", sans-serif;
+    --font-size-base: 16px;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-size: var(--font-size-base);
+    font-family: var(--font-family);
+  }
+
+  body {
+    background-color: var(--app-background);
+    color: var(--app-text);
+    font-family: var(--font-family);
+    font-size: 1rem;
+  }
+
+  /* Apply font family to all text elements */
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  span,
+  div,
+  button,
+  input,
+  textarea,
+  select,
+  a,
+  label,
+  li {
+    font-family: var(--font-family);
+  }
+
+  /* Font size scale */
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  .text-xs {
+    font-size: 0.75rem;
+  }
+
+  .text-sm {
+    font-size: 0.875rem;
+  }
+
+  .text-base {
+    font-size: 1rem;
+  }
+
+  .text-lg {
+    font-size: 1.125rem;
+  }
+
+  .text-xl {
+    font-size: 1.25rem;
+  }
+
+  .text-2xl {
+    font-size: 1.5rem;
+  }
+}
+
+.text-primary {
+  color: var(--main-color);
+}
+
+.bg-primary {
+  background-color: var(--main-color);
+}
+
+.hover\:bg-primary:hover {
+  background-color: var(--main-color-hover);
+}
+
+.border-primary {
+  border-color: var(--main-color);
+}
+
+.text-blue-500 {
+  color: var(--main-color);
+}
+
+.bg-blue-500 {
+  background-color: var(--main-color);
+}
+
+.hover\:bg-blue-600:hover {
+  background-color: var(--main-color-hover);
+}
+
+.text-muted-foreground {
+  color: var(--app-subtext);
+}
+
+.border {
+  border-color: var(--app-border);
+}
+
+.bg-muted {
+  background-color: var(--app-card);
+}
+
+.logo-image {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+.font-custom * {
+  font-family: var(--font-family) !important;
+}
+
+/* Add this new class for font previews */
+.font-preview {
+  font-family: inherit !important;
+}
+
+/* Override the font-family for each font preview */
+[style*="font-family"] {
+  font-family: inherit !important;
+}
+
+/* This ensures inline styles with !important take precedence */
+[style*="!important"] {
+  font-family: inherit !important;
+}
+
+/* Mobile-specific fixes for todo list */
+@media (max-width: 640px) {
+  .todo-container table {
+    table-layout: fixed;
+  }
+
+  .todo-container td {
+    word-break: break-word;
+    max-width: 100%;
+  }
+
+  .todo-container th:first-child,
+  .todo-container td:first-child {
+    width: 30px;
+    min-width: 30px;
+    max-width: 30px;
+  }
+
+  .todo-container th:last-child,
+  .todo-container td:last-child {
+    width: 70px;
+    min-width: 70px;
+  }
+
+  .todo-container th:nth-child(2),
+  .todo-container td:nth-child(2) {
+    width: calc(100% - 100px);
+  }
+}

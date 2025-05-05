@@ -1,0 +1,59 @@
+import type React from "react";
+import "@/app/globals.css";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import { ThemeProvider as NextThemesProvider } from "next-themes";
+import { ThemeProvider } from "@/contexts/theme-context";
+import { LanguageProvider } from "@/contexts/language-context";
+import { FontProvider } from "@/contexts/font-context";
+import { ActivityProvider } from "@/contexts/activity-context";
+import { StorageProvider } from "@/contexts/storage-context";
+import { Toaster } from "@/components/toaster";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "Clipbored | Your daily hand",
+  description: "Clipboard and To-do in one App",
+  generator: "prayoga.io",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Montserrat:wght@400;500;600;700&family=Lato:wght@400;700&family=Poppins:wght@400;500;600;700&family=Raleway:wght@400;500;600;700&family=Source+Sans+Pro:wght@400;600;700&family=Ubuntu:wght@400;500;700&family=Playfair+Display:wght@400;500;600;700&family=Merriweather:wght@400;700&family=Nunito:wght@400;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body
+        className={`${inter.className} font-custom`}
+        suppressHydrationWarning
+      >
+        <NextThemesProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+        >
+          <StorageProvider>
+            <ThemeProvider>
+              <ActivityProvider>
+                <FontProvider>
+                  <LanguageProvider>
+                    {children}
+                    <Toaster />
+                  </LanguageProvider>
+                </FontProvider>
+              </ActivityProvider>
+            </ThemeProvider>
+          </StorageProvider>
+        </NextThemesProvider>
+      </body>
+    </html>
+  );
+}
