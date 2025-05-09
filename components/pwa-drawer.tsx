@@ -12,9 +12,11 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { Download, Smartphone, Laptop, Info } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLanguage } from "@/contexts/language-context";
 import { useStorage } from "@/contexts/storage-context";
+import { PWAInstallElement } from "@khmyznikov/pwa-install";
+import PWAInstall from "@khmyznikov/pwa-install/react-legacy";
 
 export function PwaDrawer() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -24,30 +26,46 @@ export function PwaDrawer() {
   // Load drawer state from storage when ready
   useEffect(() => {
     const loadDrawerState = async () => {
-      if (isStorageReady) {
-        const savedDrawerState = await getItem("pwaDrawerOpen");
-        if (savedDrawerState !== null) {
-          setIsDrawerOpen(savedDrawerState === "true");
+      if (!isStorageReady) return;
+
+      try {
+        const savedState = await getItem("pwaDrawerOpen");
+        if (savedState) {
+          setIsDrawerOpen(savedState);
         }
+      } catch (error) {
+        console.error("Error loading drawer state:", error);
       }
     };
+
     loadDrawerState();
   }, [isStorageReady, getItem]);
 
   // Save drawer state to storage when it changes
   useEffect(() => {
     if (isStorageReady) {
-      setItem("pwaDrawerOpen", isDrawerOpen.toString());
+      setItem("pwaDrawerOpen", isDrawerOpen);
     }
   }, [isDrawerOpen, isStorageReady, setItem]);
 
+  // pwa config
+  const pwaInstallRef = useRef<PWAInstallElement>(null);
+
   return (
     <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+      <PWAInstall
+        ref={pwaInstallRef}
+        name={"Clipbored"}
+        icon={"/logo.svg"}
+        onPwaInstallAvailableEvent={(event) => console.log(event)}
+      ></PWAInstall>
+
       <DrawerTrigger asChild>
         <button className="p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors">
           <Download className="h-5 w-5 text-primary" />
         </button>
       </DrawerTrigger>
+
       <DrawerContent>
         <div className="mx-auto w-full max-w-sm">
           <DrawerHeader>
@@ -93,7 +111,16 @@ export function PwaDrawer() {
           </div>
 
           <DrawerFooter className="mt-4">
-            <Button>{t("tryInstall")}</Button>
+            {/* {isInstallable && ( */}
+            <Button
+              onClick={() => {
+                pwaInstallRef.current?.showDialog(true);
+                setIsDrawerOpen(false);
+              }}
+            >
+              {t("tryInstall")}
+            </Button>
+            {/* )} */}
             <DrawerClose asChild>
               <Button variant="outline">{t("maybeLater")}</Button>
             </DrawerClose>

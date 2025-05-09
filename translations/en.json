@@ -185,19 +185,6 @@
     "dataMigrated": "Your data has been migrated to {storageType}.",
     "selectAll": "Select All",
     "deselectAll": "Deselect All",
-    "deleteSelected": "Delete Selected",
-    "clearClipboard": "Clear Clipboard",
-    "clearClipboardConfirm": "Are you sure you want to clear the clipboard content? This action will save the current content to history before clearing.",
-    "searchTasks": "Search tasks...",
-    "priority": "Priority",
-    "allPriorities": "All priorities",
-    "noPriority": "No priority",
-    "high": "High",
-    "medium": "Medium",
-    "low": "Low",
-    "clearFilters": "Clear filters",
-    "imageDownloadFallback": "Browser doesn't support image copying",
-    "imageDownloadFallbackDesc": "Your browser doesn't support copying images directly. You can download the image instead.",
-    "download": "Download"
+    "deleteSelected": "Delete Selected"
   }
 }

@@ -1,24 +1,24 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, FileSlidersIcon as SliderIcon, Star } from "lucide-react"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Slider } from "@/components/ui/slider"
-import { useLanguage } from "@/contexts/language-context"
-import { useFont } from "@/contexts/font-context"
-import { FontButton } from "./font-button"
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search, FileSlidersIcon as SliderIcon, Star } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Slider } from "@/components/ui/slider";
+import { useLanguage } from "@/contexts/language-context";
+import { useFont } from "@/contexts/font-context";
+import { FontButton } from "./font-button";
 
 interface FontTabProps {
-  searchQuery: string
-  onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  searchQuery: string;
+  onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 export function FontTab({ searchQuery, onSearchChange }: FontTabProps) {
-  const { t } = useLanguage()
+  const { t } = useLanguage();
   const {
     currentFont,
     setFont,
@@ -28,20 +28,31 @@ export function FontTab({ searchQuery, onSearchChange }: FontTabProps) {
     fontSize,
     setFontSize,
     availableSizes,
-  } = useFont()
+  } = useFont();
 
-  const filteredFonts = availableFonts.filter((font) => font.name.toLowerCase().includes(searchQuery.toLowerCase()))
-  const favoriteFonts = availableFonts.filter((font) => fontFavorites.includes(font.name))
+  const filteredFonts = availableFonts.filter((font) =>
+    font.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+  const favoriteFonts = availableFonts.filter((font) =>
+    fontFavorites.includes(font.name),
+  );
 
   return (
     <>
       <div className="mb-4 relative">
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input placeholder={t("searchFonts")} value={searchQuery} onChange={onSearchChange} className="pl-8" />
+        <Input
+          placeholder={t("searchFonts")}
+          value={searchQuery}
+          onChange={onSearchChange}
+          className="pl-8"
+        />
       </div>
 
       <div className="mb-6">
-        <Label className="text-sm font-medium mb-2 block">{t("fontSize")}</Label>
+        <Label className="text-sm font-medium mb-2 block">
+          {t("fontSize")}
+        </Label>
         <div className="flex items-center gap-4">
           <SliderIcon className="h-4 w-4 text-muted-foreground" />
           <Slider
@@ -51,14 +62,18 @@ export function FontTab({ searchQuery, onSearchChange }: FontTabProps) {
             step={1}
             className="flex-1"
             onValueChange={(value) => {
-              const size = value[0]
+              const size = value[0];
               const closestSize = availableSizes.reduce((prev, curr) => {
-                return Math.abs(curr.size - size) < Math.abs(prev.size - size) ? curr : prev
-              })
-              setFontSize(closestSize)
+                return Math.abs(curr.size - size) < Math.abs(prev.size - size)
+                  ? curr
+                  : prev;
+              });
+              setFontSize(closestSize);
             }}
           />
-          <span className="text-sm font-medium w-8 text-center">{fontSize.size}px</span>
+          <span className="text-sm font-medium w-8 text-center">
+            {fontSize.size}px
+          </span>
         </div>
       </div>
 
@@ -113,5 +128,5 @@ export function FontTab({ searchQuery, onSearchChange }: FontTabProps) {
         </TabsContent>
       </Tabs>
     </>
-  )
+  );
 }

@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Drawer,
   DrawerClose,
@@ -14,6 +13,7 @@ import {
 } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import {
   Link2,
   Copy,
@@ -39,6 +39,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/contexts/language-context";
 import { useStorage } from "@/contexts/storage-context";
+import { useActivity } from "@/contexts/activity-context";
 
 type AccessLevel = "editor" | "viewer" | "commenter";
 
@@ -50,6 +51,23 @@ interface SharedUser {
   image?: string;
 }
 
+const initialUsers: SharedUser[] = [
+  {
+    id: "1",
+    name: "John Doe",
+    email: "john.doe@example.com",
+    access: "editor",
+  },
+  {
+    id: "2",
+    name: "Jane Smith",
+    email: "jane.smith@example.com",
+    access: "viewer",
+  },
+];
+
+const dummyShareLink = "https://clipbored.prayoga.io/share/83f029ac";
+
 export function ShareDrawer() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [shareAccess, setShareAccess] = useState<"restricted" | "anyone">(
@@ -58,109 +76,105 @@ export function ShareDrawer() {
   const [copied, setCopied] = useState(false);
   const [email, setEmail] = useState("");
   const [newUserAccess, setNewUserAccess] = useState<AccessLevel>("viewer");
-
-  const [sharedUsers, setSharedUsers] = useState<SharedUser[]>([
-    {
-      id: "1",
-      name: "John Doe",
-      email: "john.doe@example.com",
-      access: "editor",
-    },
-    {
-      id: "2",
-      name: "Jane Smith",
-      email: "jane.smith@example.com",
-      access: "viewer",
-    },
-  ]);
+  const [sharedUsers, setSharedUsers] = useState<SharedUser[]>(initialUsers);
 
   const { getItem, setItem, isStorageReady } = useStorage();
+  const { recordActivity, getLastActivity } = useActivity();
+  const { t } = useLanguage();
+
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    const loadSharingState = async () => {
-      if (!isStorageReady) return;
-
-      const savedDrawerState = await getItem("shareDrawerOpen");
-      if (savedDrawerState !== null) {
-        setIsDrawerOpen(savedDrawerState === "true");
-      }
-
-      const savedShareAccess = await getItem("shareAccess");
-      if (savedShareAccess !== null) {
-        setShareAccess(savedShareAccess as "restricted" | "anyone");
-      }
-
-      const savedSharedUsers = await getItem("sharedUsers");
-      if (savedSharedUsers !== null) {
-        try {
-          setSharedUsers(savedSharedUsers);
-        } catch (e) {
-          console.error("Failed to parse sharedUsers:", e);
-        }
-      }
-    };
-
-    loadSharingState();
+    if (!isStorageReady) return;
+    getItem("shareDrawerOpen").then((savedState) => {
+      if (savedState) setIsDrawerOpen(savedState);
+    });
   }, [isStorageReady, getItem]);
 
-  // Add these to save state whenever it changes
   useEffect(() => {
-    if (isStorageReady) {
-      setItem("shareDrawerOpen", isDrawerOpen.toString());
-    }
+    if (isStorageReady) setItem("shareDrawerOpen", isDrawerOpen);
   }, [isDrawerOpen, isStorageReady, setItem]);
 
   useEffect(() => {
-    if (isStorageReady) {
-      setItem("shareAccess", shareAccess);
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
+    const lastShareAccess = getLastActivity("share_access");
+    const lastSharedUsers = getLastActivity("shared_users");
+
+    if (lastShareAccess?.details?.shareAccess) {
+      setShareAccess(lastShareAccess.details.shareAccess);
     }
-  }, [shareAccess, isStorageReady, setItem]);
 
-  useEffect(() => {
-    if (isStorageReady) {
-      setItem("sharedUsers", sharedUsers);
+    if (lastSharedUsers?.details?.sharedUsers) {
+      setSharedUsers(lastSharedUsers.details.sharedUsers);
     }
-  }, [sharedUsers, isStorageReady, setItem]);
+  }, [getLastActivity]);
 
-  const dummyShareLink = "https://clipbored.app/share/83f029ac";
-
-  const handleCopyLink = () => {
+  const handleCopyLink = useCallback(() => {
     navigator.clipboard.writeText(dummyShareLink).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
-  };
+  }, []);
 
-  const handleAddUser = () => {
-    if (!email || !email.includes("@")) return;
+  const handleAddUser = useCallback(() => {
+    if (!email.includes("@") || sharedUsers.some((u) => u.email === email))
+      return;
 
     const newUser: SharedUser = {
       id: Date.now().toString(),
       name: email.split("@")[0],
-      email: email,
+      email,
       access: newUserAccess,
     };
 
-    setSharedUsers([...sharedUsers, newUser]);
+    const updatedUsers = [...sharedUsers, newUser];
+    setSharedUsers(updatedUsers);
+    recordActivity("shared_users", { sharedUsers: updatedUsers });
     setEmail("");
-  };
+  }, [email, newUserAccess, sharedUsers, recordActivity]);
 
-  const handleRemoveUser = (id: string) => {
-    setSharedUsers(sharedUsers.filter((user) => user.id !== id));
-  };
+  const handleRemoveUser = useCallback(
+    (id: string) => {
+      const updatedUsers = sharedUsers.filter((u) => u.id !== id);
+      setSharedUsers(updatedUsers);
+      recordActivity("shared_users", { sharedUsers: updatedUsers });
+    },
+    [sharedUsers, recordActivity],
+  );
 
-  const updateUserAccess = (id: string, access: AccessLevel) => {
-    setSharedUsers(
-      sharedUsers.map((user) => (user.id === id ? { ...user, access } : user)),
-    );
-  };
+  const updateUserAccess = useCallback(
+    (id: string, access: AccessLevel) => {
+      const updatedUsers = sharedUsers.map((user) =>
+        user.id === id ? { ...user, access } : user,
+      );
+      setSharedUsers(updatedUsers);
+      recordActivity("shared_users", { sharedUsers: updatedUsers });
+    },
+    [sharedUsers, recordActivity],
+  );
 
-  const { t } = useLanguage();
+  const handleShareAccess = useCallback(
+    (v: "restricted" | "anyone") => {
+      setShareAccess(v);
+      recordActivity("share_access", { shareAccess: v });
+    },
+    [recordActivity],
+  );
+
+  const isEmailValid = useMemo(
+    () => email.includes("@") && !sharedUsers.some((u) => u.email === email),
+    [email, sharedUsers],
+  );
 
   return (
     <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
       <DrawerTrigger asChild>
-        <button className="p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors">
+        <button
+          aria-label={"Share"}
+          className="p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors"
+        >
           <Link2 className="h-5 w-5 text-primary" />
         </button>
       </DrawerTrigger>
@@ -185,9 +199,7 @@ export function ShareDrawer() {
                 />
                 <Select
                   value={newUserAccess}
-                  onValueChange={(value: AccessLevel) =>
-                    setNewUserAccess(value)
-                  }
+                  onValueChange={(v: AccessLevel) => setNewUserAccess(v)}
                 >
                   <SelectTrigger className="absolute right-1 top-1 w-20 h-7 text-xs">
                     <SelectValue />
@@ -199,7 +211,13 @@ export function ShareDrawer() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button size="sm" variant="secondary" onClick={handleAddUser}>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleAddUser}
+                disabled={!isEmailValid}
+                aria-label={"Add"}
+              >
                 <UserPlus className="h-4 w-4" />
               </Button>
             </div>
@@ -210,7 +228,7 @@ export function ShareDrawer() {
                 {t("peopleWithAccess")}
               </h4>
               <ScrollArea className="h-[180px] rounded-md border">
-                <div className="p-4">
+                <div className="p-4 space-y-3">
                   {sharedUsers.map((user) => (
                     <div
                       key={user.id}
@@ -244,9 +262,15 @@ export function ShareDrawer() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="viewer">Viewer</SelectItem>
-                            <SelectItem value="commenter">Commenter</SelectItem>
-                            <SelectItem value="editor">Editor</SelectItem>
+                            <SelectItem value="viewer">
+                              {t("viewer")}
+                            </SelectItem>
+                            <SelectItem value="commenter">
+                              {t("commenter")}
+                            </SelectItem>
+                            <SelectItem value="editor">
+                              {t("editor")}
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                         <Button
@@ -254,6 +278,7 @@ export function ShareDrawer() {
                           size="icon"
                           className="h-8 w-8"
                           onClick={() => handleRemoveUser(user.id)}
+                          aria-label={"Remove"}
                         >
                           <X className="h-4 w-4" />
                         </Button>
@@ -268,42 +293,37 @@ export function ShareDrawer() {
 
             <div className="mb-6">
               <h4 className="text-sm font-medium mb-3">{t("generalAccess")}</h4>
-              <RadioGroup
-                value={shareAccess}
-                onValueChange={(v: "restricted" | "anyone") =>
-                  setShareAccess(v)
-                }
-              >
-                <div className="flex items-start space-x-2 mb-3">
-                  <RadioGroupItem value="restricted" id="restricted" />
-                  <Label
-                    htmlFor="restricted"
-                    className="font-normal flex items-center gap-2"
-                  >
-                    <Lock className="h-4 w-4" />
-                    <div>
-                      <p>{t("restricted")}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {t("restrictedDesc")}
-                      </p>
-                    </div>
-                  </Label>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <RadioGroupItem value="anyone" id="anyone" />
-                  <Label
-                    htmlFor="anyone"
-                    className="font-normal flex items-center gap-2"
-                  >
-                    <Globe className="h-4 w-4" />
-                    <div>
-                      <p>{t("anyone")}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {t("anyoneDesc")}
-                      </p>
-                    </div>
-                  </Label>
-                </div>
+              <RadioGroup value={shareAccess} onValueChange={handleShareAccess}>
+                {[
+                  {
+                    value: "restricted",
+                    icon: <Lock className="h-4 w-4" />,
+                    label: t("restricted"),
+                    description: t("restrictedDesc"),
+                  },
+                  {
+                    value: "anyone",
+                    icon: <Globe className="h-4 w-4" />,
+                    label: t("anyone"),
+                    description: t("anyoneDesc"),
+                  },
+                ].map(({ value, icon, label, description }) => (
+                  <div key={value} className="flex items-start space-x-2 mb-3">
+                    <RadioGroupItem value={value} id={value} />
+                    <Label
+                      htmlFor={value}
+                      className="font-normal flex items-center gap-2"
+                    >
+                      {icon}
+                      <div>
+                        <p>{label}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {description}
+                        </p>
+                      </div>
+                    </Label>
+                  </div>
+                ))}
               </RadioGroup>
             </div>
 
@@ -316,7 +336,12 @@ export function ShareDrawer() {
                   readOnly
                 />
               </div>
-              <Button variant="outline" size="icon" onClick={handleCopyLink}>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleCopyLink}
+                aria-label={"CopyLink"}
+              >
                 {copied ? (
                   <Check className="h-4 w-4 text-green-500" />
                 ) : (

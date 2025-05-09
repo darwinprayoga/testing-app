@@ -1,23 +1,23 @@
-"use client"
+"use client";
 
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { useLanguage } from "@/contexts/language-context"
-import type { TodoItem } from "@/types/todo"
-import { TodoItemComponent } from "./todo-item"
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useLanguage } from "@/contexts/language-context";
+import type { TodoItem } from "@/types/todo";
+import { TodoItemComponent } from "./todo-item";
 
 interface TodoListProps {
-  todos: TodoItem[]
-  activeTab: string
-  onToggleComplete: (id: string) => void
-  onArchive: (id: string) => void
-  onRestore: (id: string) => void
-  onDelete: (id: string) => void
-  onUpdateText: (id: string, text: string) => void
-  onUpdateDescription: (id: string, description: string) => void
-  onUpdatePriority: (id: string, priority: string) => void
-  onOpenEtaDialog: (id: string) => void
-  selectedTasks?: string[]
-  onToggleSelection?: (id: string) => void
+  todos: TodoItem[];
+  activeTab: string;
+  onToggleComplete: (id: string) => void;
+  onArchive: (id: string) => void;
+  onRestore: (id: string) => void;
+  onDelete: (id: string) => void;
+  onUpdateText: (id: string, text: string) => void;
+  onUpdateDescription: (id: string, description: string) => void;
+  onUpdatePriority: (id: string, priority: string) => void;
+  onOpenEtaDialog: (id: string) => void;
+  selectedTasks?: string[];
+  onToggleSelection?: (id: string) => void;
 }
 
 export function TodoList({
@@ -34,19 +34,19 @@ export function TodoList({
   selectedTasks = [],
   onToggleSelection = () => {},
 }: TodoListProps) {
-  const { t } = useLanguage()
+  const { t } = useLanguage();
 
   // Sort todos by priority (ascending)
   const sortedTodos = [...todos]
-    .filter((todo) => (activeTab === "active" ? !todo.archived : todo.archived))
+    .filter((todo) => (activeTab == "active" ? !todo.archived : todo.archived))
     .sort((a, b) => {
       // "-" priority should be at the bottom
-      if (a.priority === "-") return 1
-      if (b.priority === "-") return -1
-      return Number(a.priority) - Number(b.priority)
-    })
+      if (a.priority === "-") return 1;
+      if (b.priority === "-") return -1;
+      return Number(a.priority) - Number(b.priority);
+    });
 
-  const showSelection = activeTab === "archived"
+  const showSelection = activeTab === "archived";
 
   return (
     <ScrollArea className="min-h-[290px]">
@@ -58,7 +58,11 @@ export function TodoList({
               <th title="Priority" className="w-8 text-center">
                 P
               </th>
-              <th className={`px-1 ${showSelection ? "w-[calc(100%-96px)]" : "w-[calc(100%-80px)]"}`}>
+              <th
+                className={`px-1 ${
+                  showSelection ? "w-[calc(100%-96px)]" : "w-[calc(100%-80px)]"
+                }`}
+              >
                 {t("taskName")}
               </th>
               <th className="w-16 text-right">{t("action")}</th>
@@ -87,5 +91,5 @@ export function TodoList({
         </table>
       </div>
     </ScrollArea>
-  )
+  );
 }

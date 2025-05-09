@@ -1,30 +1,34 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useRef } from "react"
-import { Check, Archive, RotateCcw, Trash2, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
-import { useLanguage } from "@/contexts/language-context"
-import type { TodoItem } from "@/types/todo"
-import { formatEta, validatePriorityInput, autoResizeTextarea } from "@/utils/todo-utils"
+import { useState, useRef } from "react";
+import { Check, Archive, RotateCcw, Trash2, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useLanguage } from "@/contexts/language-context";
+import type { TodoItem } from "@/types/todo";
+import {
+  formatEta,
+  validatePriorityInput,
+  autoResizeTextarea,
+} from "@/utils/todo-utils";
 
 interface TodoItemProps {
-  todo: TodoItem
-  activeTab: string
-  onToggleComplete: (id: string) => void
-  onArchive: (id: string) => void
-  onRestore: (id: string) => void
-  onDelete: (id: string) => void
-  onUpdateText: (id: string, text: string) => void
-  onUpdateDescription: (id: string, description: string) => void
-  onUpdatePriority: (id: string, priority: string) => void
-  onOpenEtaDialog: (id: string) => void
-  showSelection?: boolean
-  isSelected?: boolean
-  onToggleSelection?: () => void
+  todo: TodoItem;
+  activeTab: string;
+  onToggleComplete: (id: string) => void;
+  onArchive: (id: string) => void;
+  onRestore: (id: string) => void;
+  onDelete: (id: string) => void;
+  onUpdateText: (id: string, text: string) => void;
+  onUpdateDescription: (id: string, description: string) => void;
+  onUpdatePriority: (id: string, priority: string) => void;
+  onOpenEtaDialog: (id: string) => void;
+  showSelection?: boolean;
+  isSelected?: boolean;
+  onToggleSelection?: () => void;
 }
 
 export function TodoItemComponent({
@@ -42,71 +46,79 @@ export function TodoItemComponent({
   isSelected = false,
   onToggleSelection = () => {},
 }: TodoItemProps) {
-  const { t } = useLanguage()
-  const [editingField, setEditingField] = useState<"text" | "priority" | null>(null)
-  const [editValue, setEditValue] = useState<string>("")
-  const [deletingId, setDeletingId] = useState<boolean>(false)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const { t }: any = useLanguage();
+  const [editingField, setEditingField] = useState<"text" | "priority" | null>(
+    null,
+  );
+  const [editValue, setEditValue] = useState<string>("");
+  const [deletingId, setDeletingId] = useState<boolean>(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Start editing a field
   const startEditing = (field: "text" | "priority", value: string) => {
-    setEditingField(field)
-    setEditValue(value)
-  }
+    setEditingField(field);
+    setEditValue(value);
+  };
 
   // Save edited value
   const saveEditing = () => {
-    if (!editingField) return
+    if (!editingField) return;
 
     if (editingField === "priority") {
       // Check if priority is a number or "-"
       if (editValue !== "-" && isNaN(Number(editValue))) {
         // If not a valid priority, cancel editing
-        cancelEditing()
-        return
+        cancelEditing();
+        return;
       }
-      onUpdatePriority(todo.id, editValue)
+      onUpdatePriority(todo.id, editValue);
     } else if (editingField === "text") {
-      onUpdateText(todo.id, editValue)
+      onUpdateText(todo.id, editValue);
     }
 
-    cancelEditing()
-  }
+    cancelEditing();
+  };
 
   // Cancel editing
   const cancelEditing = () => {
-    setEditingField(null)
-  }
+    setEditingField(null);
+  };
 
   // Handle key press in edit mode
   const handleEditKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey && editingField === "priority") {
-      e.preventDefault()
-      saveEditing()
+      e.preventDefault();
+      saveEditing();
     } else if (e.key === "Enter" && e.ctrlKey) {
-      e.preventDefault()
-      saveEditing()
+      e.preventDefault();
+      saveEditing();
     } else if (e.key === "Escape") {
-      cancelEditing()
+      cancelEditing();
     }
-  }
+  };
 
   // Handle description key down
-  const handleDescriptionKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleDescriptionKeyDown = (
+    e: React.KeyboardEvent<HTMLTextAreaElement>,
+  ) => {
     // Allow Enter to create a new line without requiring Shift
     if (e.key === "Enter") {
       // Don't prevent default to allow the new line
-      return
+      return;
     }
-  }
+  };
 
-  const eta = formatEta(todo.createdAt, t)
+  const eta = formatEta(todo.createdAt, t);
 
   return (
     <tr className={`border-b border-muted ${isSelected ? "bg-muted/50" : ""}`}>
       {showSelection && (
         <td className="py-2 align-top text-center">
-          <Checkbox checked={isSelected} onCheckedChange={onToggleSelection} className="mt-1" />
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={onToggleSelection}
+            className="mt-1"
+          />
         </td>
       )}
       <td className="py-2 align-top">
@@ -115,8 +127,8 @@ export function TodoItemComponent({
             value={editValue}
             onChange={(e) => {
               // Apply validation to only allow numbers
-              const validatedValue = validatePriorityInput(e.target.value)
-              setEditValue(validatedValue)
+              const validatedValue = validatePriorityInput(e.target.value);
+              setEditValue(validatedValue);
             }}
             onBlur={saveEditing}
             onKeyDown={handleEditKeyDown}
@@ -141,9 +153,9 @@ export function TodoItemComponent({
             <textarea
               value={editValue}
               onChange={(e) => {
-                setEditValue(e.target.value)
+                setEditValue(e.target.value);
                 // Auto-resize the textarea
-                autoResizeTextarea(e.target)
+                autoResizeTextarea(e.target);
               }}
               onBlur={saveEditing}
               onKeyDown={handleEditKeyDown}
@@ -154,10 +166,16 @@ export function TodoItemComponent({
             />
           ) : (
             <div
-              className={`cursor-pointer hover:bg-muted rounded px-1 break-words whitespace-normal ${!todo.text && "text-muted-foreground"}`}
+              className={`cursor-pointer hover:bg-muted rounded px-1 break-words whitespace-pre-wrap ${
+                !todo.text && "text-muted-foreground"
+              }`}
               onClick={() => startEditing("text", todo.text)}
             >
-              <span className={todo.completed ? "line-through text-muted-foreground" : ""}>
+              <span
+                className={
+                  todo.completed ? "line-through text-muted-foreground" : ""
+                }
+              >
                 {todo.text ? todo.text : t("enterTask")}
               </span>
             </div>
@@ -167,9 +185,9 @@ export function TodoItemComponent({
           <textarea
             value={todo.description}
             onChange={(e) => {
-              onUpdateDescription(todo.id, e.target.value)
+              onUpdateDescription(todo.id, e.target.value);
               // Auto-resize the textarea
-              autoResizeTextarea(e.target)
+              autoResizeTextarea(e.target);
             }}
             onKeyDown={handleDescriptionKeyDown}
             placeholder={t("addDescription")}
@@ -194,9 +212,13 @@ export function TodoItemComponent({
               <Button
                 variant="ghost"
                 size="icon"
-                className={`h-6 w-6 ${todo.completed ? "text-green-500" : "text-muted-foreground"} flex-shrink-0 border`}
+                className={`h-6 w-6 ${
+                  todo.completed ? "text-green-500" : "text-muted-foreground"
+                } flex-shrink-0 border`}
                 onClick={() => onToggleComplete(todo.id)}
-                title={todo.completed ? "Mark as incomplete" : "Mark as complete"}
+                title={
+                  todo.completed ? "Mark as incomplete" : "Mark as complete"
+                }
               >
                 <Check className="h-4 w-4" />
               </Button>
@@ -210,8 +232,8 @@ export function TodoItemComponent({
                     size="icon"
                     className="h-6 w-6 text-red-500 flex-shrink-0"
                     onClick={() => {
-                      onDelete(todo.id)
-                      setDeletingId(false)
+                      onDelete(todo.id);
+                      setDeletingId(false);
                     }}
                     title="Confirm Delete"
                   >
@@ -254,7 +276,11 @@ export function TodoItemComponent({
 
           {/* ETA display */}
           <div
-            className={`text-xs cursor-pointer ${eta.isUrgent ? "text-red-500 font-medium" : "text-muted-foreground"} whitespace-normal break-words`}
+            className={`text-xs cursor-pointer ${
+              eta.isUrgent
+                ? "text-red-500 font-medium"
+                : "text-muted-foreground"
+            } whitespace-normal break-words`}
             onClick={() => onOpenEtaDialog(todo.id)}
           >
             {eta.text}
@@ -262,5 +288,5 @@ export function TodoItemComponent({
         </div>
       </td>
     </tr>
-  )
+  );
 }

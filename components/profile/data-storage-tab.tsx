@@ -63,7 +63,7 @@ export function DataStorageTab({
           <RadioGroupItem
             value="localStorage"
             id="localStorage"
-            // disabled={!user.isLoggedIn}
+            disabled={!user.isLoggedIn}
           />
           <div className="grid gap-1.5">
             <Label
@@ -88,7 +88,7 @@ export function DataStorageTab({
           <RadioGroupItem
             value="cloud"
             id="cloud"
-            // disabled={!user.isLoggedIn || !user.hasPremium}
+            disabled={!user.isLoggedIn || !user.hasPremium}
           />
           <div className="grid gap-1.5">
             <Label

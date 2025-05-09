@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,20 +23,23 @@ import { ProfileTab } from "./profile-tab";
 import { DataStorageTab } from "./data-storage-tab";
 import { ResetDataDialog } from "./reset-data-dialog";
 import type { User } from "./types";
+import { useActivity } from "@/contexts/activity-context";
+
+const DEFAULT_USER: User = {
+  username: "",
+  email: "",
+  image: "",
+  isLoggedIn: false,
+  hasPremium: false,
+};
 
 export function ProfileDrawer() {
-  const [user, setUser] = useState<User>({
-    username: "",
-    email: "",
-    image: "",
-    isLoggedIn: false,
-    hasPremium: false,
-  });
-
+  const [user, setUser] = useState<User>(DEFAULT_USER);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>("profile");
+  const [activeTab, setActiveTab] = useState("profile");
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [usernameError, setUsernameError] = useState<string | null>(null);
+
   const { toast } = useToast();
   const { t } = useLanguage();
   const {
@@ -47,71 +50,64 @@ export function ProfileDrawer() {
     clearAll,
     isStorageReady,
   } = useStorage();
+  const { recordActivity, getLastActivity } = useActivity();
+  const initializedRef = useRef(false);
 
+  // Load profile data from storage on init
   useEffect(() => {
-    const loadDataFromStorage = async () => {
+    const loadFromStorage = async () => {
       if (!isStorageReady) return;
-
       try {
-        // Load user profile
-        const savedUser = await getItem("userProfile");
-        if (savedUser) {
-          try {
-            setUser(savedUser);
-          } catch (error) {
-            console.error("Error parsing user profile:", error);
-          }
-        }
+        const [savedUser, savedDrawerOpen] = await Promise.all([
+          getItem("userProfile"),
+          getItem("profileDrawerOpen"),
+          getItem("profileActiveTab"),
+        ]);
 
-        // Load profile drawer state
-        const savedDrawerState = await getItem("profileDrawerOpen");
-        if (savedDrawerState) {
-          setIsDrawerOpen(savedDrawerState === "true");
-        }
-
-        // Load active tab state
-        const savedActiveTab = await getItem("profileActiveTab");
-        if (savedActiveTab) {
-          setActiveTab(savedActiveTab);
-        }
-      } catch (error) {
-        console.error("Error during loading data from storage:", error);
+        if (savedUser) setUser(savedUser);
+        if (savedDrawerOpen) setIsDrawerOpen(savedDrawerOpen);
+      } catch (err) {
+        console.error("Failed to load profile drawer data:", err);
       }
     };
 
-    loadDataFromStorage();
+    loadFromStorage();
   }, [isStorageReady, getItem]);
 
-  // Save user profile to storage when it changes
+  // Restore user context on mount
   useEffect(() => {
-    if (isStorageReady) {
-      setItem("userProfile", user);
+    if (!initializedRef.current) {
+      initializedRef.current = true;
+      const lastTabSelected = getLastActivity("tab_selected");
+
+      if (lastTabSelected && lastTabSelected.details?.tabId) {
+        const tabId = lastTabSelected.details.tabId;
+        if (tabId === "profile" || tabId === "data") {
+          setActiveTab(tabId);
+        }
+      }
     }
+  }, [getLastActivity]);
+
+  // Persist data to storage
+  useEffect(() => {
+    if (isStorageReady) setItem("userProfile", user);
   }, [user, isStorageReady, setItem]);
 
-  // Save drawer state to storage when it changes
   useEffect(() => {
-    if (isStorageReady) {
-      setItem("profileDrawerOpen", isDrawerOpen.toString());
-    }
+    if (isStorageReady) setItem("profileDrawerOpen", isDrawerOpen);
   }, [isDrawerOpen, isStorageReady, setItem]);
 
-  // Save active tab to storage when it changes
-  useEffect(() => {
-    if (isStorageReady) {
-      setItem("profileActiveTab", activeTab);
-    }
-  }, [activeTab, isStorageReady, setItem]);
+  const handleDrawerOpenChange = (open: boolean) => setIsDrawerOpen(open);
 
-  const handleDrawerOpenChange = (open: boolean) => {
-    setIsDrawerOpen(open);
-    if (isStorageReady) {
-      setItem("profileDrawerOpen", open.toString());
-    }
-  };
+  const updateProfile = useCallback(
+    (field: keyof User, value: string | boolean) => {
+      setUser((prev) => ({ ...prev, [field]: value }));
+    },
+    [],
+  );
 
-  const handleGoogleLogin = () => {
-    // Simulate Google login
+  const handleGoogleLogin = () =>
     setUser({
       username: "johndoe",
       email: "john.doe@example.com",
@@ -119,81 +115,36 @@ export function ProfileDrawer() {
       isLoggedIn: true,
       hasPremium: false,
     });
-  };
 
   const handleLogout = () => {
-    setUser({
-      username: "",
-      email: "",
-      image: "",
-      isLoggedIn: false,
-      hasPremium: false,
-    });
-
-    // Reset data storage to cookies when logging out
+    setUser(DEFAULT_USER);
     setStorageType("cookies");
-
     setIsDrawerOpen(false);
   };
 
-  const updateProfile = (field: keyof User, value: string | boolean) => {
-    setUser((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
   const handleDataStorageChange = (value: StorageType) => {
-    // // Check if user is logged in for localStorage option
-    // if (value === "localStorage" && !user.isLoggedIn) {
-    //   toast({
-    //     title: t("loginRequired"),
-    //     description: t("loginRequiredDesc"),
-    //     variant: "destructive",
-    //   });
-    //   return;
-    // }
-
-    // // Check if user is logged in and has premium for cloud option
-    // if (value === "cloud" && (!user.isLoggedIn || !user.hasPremium)) {
-    //   toast({
-    //     title: t("premiumRequired"),
-    //     description: t("premiumRequiredDesc"),
-    //     variant: "destructive",
-    //   });
-    //   return;
-    // }
-
-    // Change the storage type - migration happens in the storage context
     setStorageType(value);
   };
 
-  // Calculate cookie expiration time (3 days from now)
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    recordActivity("tab_selected", { tabId: tab });
+  };
+
   const getCookieExpirationText = () => {
     const expirationDate = new Date();
     expirationDate.setTime(expirationDate.getTime() + 3 * 24 * 60 * 60 * 1000);
-    return formatDistanceToNow(expirationDate, { addSuffix: false });
+    return formatDistanceToNow(expirationDate);
   };
 
   const handleResetData = () => {
-    // Clear all data
     clearAll();
-
-    // Preserve user profile if logged in
-    if (user.isLoggedIn) {
-      setItem("userProfile", user);
-    }
-
-    // Close the dialog
+    if (user.isLoggedIn) setItem("userProfile", user);
     setResetDialogOpen(false);
-
-    // Show success toast
     toast({
       title: t("dataResetComplete"),
       description: t("dataResetCompleteDesc"),
     });
-
-    // Reload the page to reset the app state
     window.location.reload();
   };
 
@@ -207,30 +158,22 @@ export function ProfileDrawer() {
       return;
     }
 
-    // Toggle premium status
-    const newPremiumStatus = !user.hasPremium;
+    const newPremium = !user.hasPremium;
+    updateProfile("hasPremium", newPremium);
 
-    // Update user profile with new premium status
-    updateProfile("hasPremium", newPremiumStatus);
-
-    // Show toast notification
     toast({
-      title: newPremiumStatus ? t("premiumActivated") : t("premiumCancelled"),
-      description: newPremiumStatus
+      title: newPremium ? t("premiumActivated") : t("premiumCancelled"),
+      description: newPremium
         ? t("premiumActivatedDesc")
         : t("premiumCancelledDesc"),
     });
 
-    // If user cancels premium and was using cloud storage, switch to localStorage
-    if (!newPremiumStatus && storageType === "cloud") {
+    if (!newPremium && storageType === "cloud") {
       setStorageType("localStorage");
     }
 
-    // If user upgrades to premium, automatically switch to the data tab
-    if (newPremiumStatus) {
+    if (newPremium) {
       setActiveTab("data");
-
-      // Show a toast suggesting to try cloud storage
       setTimeout(() => {
         toast({
           title: t("cloudStorageAvailable"),
@@ -253,18 +196,18 @@ export function ProfileDrawer() {
     <Drawer open={isDrawerOpen} onOpenChange={handleDrawerOpenChange}>
       <DrawerTrigger asChild>
         <Button variant="ghost" size="icon" className="rounded-full">
-          {user.isLoggedIn ? (
-            <Avatar>
-              <AvatarImage src={user.image || ""} />
-              <AvatarFallback className="bg-primary text-white">
-                {user.username
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")}
-              </AvatarFallback>
-            </Avatar>
-          ) : (
-            <Avatar>
+          <Avatar>
+            {user.isLoggedIn ? (
+              <>
+                <AvatarImage src={user.image || ""} />
+                <AvatarFallback className="bg-primary text-white">
+                  {user.username
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")}
+                </AvatarFallback>
+              </>
+            ) : (
               <AvatarFallback className="bg-muted text-muted-foreground">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -276,16 +219,16 @@ export function ProfileDrawer() {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="lucide lucide-user"
                 >
                   <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
                   <circle cx="12" cy="7" r="4" />
                 </svg>
               </AvatarFallback>
-            </Avatar>
-          )}
+            )}
+          </Avatar>
         </Button>
       </DrawerTrigger>
+
       <DrawerContent>
         <div className="mx-auto w-full max-w-sm">
           <DrawerHeader>
@@ -298,9 +241,8 @@ export function ProfileDrawer() {
           </DrawerHeader>
 
           <Tabs
-            defaultValue={activeTab}
             value={activeTab}
-            onValueChange={setActiveTab}
+            onValueChange={handleTabChange}
             className="px-4"
           >
             <TabsList className="grid w-full grid-cols-2">
@@ -352,7 +294,6 @@ export function ProfileDrawer() {
         </div>
       </DrawerContent>
 
-      {/* Reset Data Confirmation Dialog */}
       <ResetDataDialog
         open={resetDialogOpen}
         onOpenChange={setResetDialogOpen}

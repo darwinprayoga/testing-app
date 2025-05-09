@@ -31,7 +31,7 @@ export function InfoDrawer({ open, onOpenChange }: InfoDrawerProps) {
       if (isStorageReady) {
         const savedDrawerState = await getItem("infoDrawerOpen");
         if (savedDrawerState !== null) {
-          onOpenChange(savedDrawerState === "true");
+          onOpenChange(savedDrawerState);
         }
       }
     };
@@ -41,7 +41,7 @@ export function InfoDrawer({ open, onOpenChange }: InfoDrawerProps) {
   // Save drawer state to storage when it changes
   useEffect(() => {
     if (isStorageReady) {
-      setItem("infoDrawerOpen", open.toString());
+      setItem("infoDrawerOpen", open);
     }
   }, [open, setItem, isStorageReady]);
 

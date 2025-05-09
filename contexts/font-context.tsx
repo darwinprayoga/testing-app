@@ -1,7 +1,14 @@
 "use client";
 
 import type React from "react";
-import { createContext, useContext, useEffect, useState, useRef } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useRef,
+  useMemo,
+} from "react";
 import { useActivity } from "./activity-context";
 import { useStorage } from "@/contexts/storage-context";
 
@@ -56,55 +63,60 @@ const FontContext = createContext<FontContextType | undefined>(undefined);
 export function FontProvider({ children }: { children: React.ReactNode }) {
   const [currentFont, setCurrentFont] = useState<FontFamily>(availableFonts[0]);
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [fontSize, setCurrentFontSize] = useState<FontSize>(availableSizes[2]); // Default to Medium
+  const [fontSize, setCurrentFontSize] = useState<FontSize>(availableSizes[2]);
   const { recordActivity } = useActivity();
   const { getItem, setItem, isStorageReady } = useStorage();
 
-  // Add a ref to track font size changes
   const fontSizeRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!isStorageReady) return;
-
     const loadPreferencesFromStorage = async () => {
+      if (!isStorageReady) return;
+
       try {
-        // Load font preference
-        const savedFont = await getItem("appFont");
-        if (savedFont) {
+        const [savedFont, savedFavorites, savedFontSize] = await Promise.all([
+          getItem("appFont"),
+          getItem("favoriteFonts"),
+          getItem("appFontSize"),
+        ]);
+
+        if (
+          savedFont &&
+          typeof savedFont.name === "string" &&
+          typeof savedFont.value === "string"
+        ) {
           setCurrentFont(savedFont);
         }
 
-        // Load favorite fonts
-        const savedFavorites = await getItem("favoriteFonts");
-        if (savedFavorites) {
+        if (Array.isArray(savedFavorites)) {
           setFavorites(savedFavorites);
         }
 
-        // Load font size preference
-        const savedFontSize = await getItem("appFontSize");
-        if (savedFontSize) {
+        if (
+          savedFontSize &&
+          typeof savedFontSize.name === "string" &&
+          typeof savedFontSize.value === "string" &&
+          typeof savedFontSize.size === "number"
+        ) {
           setCurrentFontSize(savedFontSize);
         }
       } catch (error) {
-        console.error("Error loading font preferences:", error);
+        console.error("⚠️ Error loading font preferences:", error);
       }
     };
 
     loadPreferencesFromStorage();
   }, [isStorageReady, getItem]);
 
-  // Apply font to document and save to storage when it changes
   useEffect(() => {
     if (!isStorageReady) return;
 
     try {
-      // Apply font family to the root element
       document.documentElement.style.setProperty(
         "--font-family",
         currentFont.value,
       );
 
-      // Force font application by adding a style element
       const styleId = "dynamic-font-style";
       let styleEl = document.getElementById(styleId) as HTMLStyleElement;
 
@@ -122,40 +134,32 @@ export function FontProvider({ children }: { children: React.ReactNode }) {
 
       setItem("appFont", currentFont);
     } catch (error) {
-      console.error("Error saving font preference:", error);
+      console.error("⚠️ Error saving font preference:", error);
     }
   }, [currentFont, isStorageReady, setItem]);
 
-  // Apply font size to document and save to storage when it changes
   useEffect(() => {
-    if (!isStorageReady) return;
+    if (!isStorageReady || fontSizeRef.current === fontSize.size) return;
 
     try {
-      // Only update if the font size has actually changed
-      if (fontSizeRef.current !== fontSize.size) {
-        fontSizeRef.current = fontSize.size;
-
-        // Set the base font size on the root element
-        document.documentElement.style.setProperty(
-          "--font-size-base",
-          `${fontSize.size}px`,
-        );
-
-        setItem("appFontSize", fontSize);
-      }
+      fontSizeRef.current = fontSize.size;
+      document.documentElement.style.setProperty(
+        "--font-size-base",
+        `${fontSize.size}px`,
+      );
+      setItem("appFontSize", fontSize);
     } catch (error) {
-      console.error("Error saving font size preference:", error);
+      console.error("⚠️ Error saving font size preference:", error);
     }
   }, [fontSize, isStorageReady, setItem]);
 
-  // Save favorites to storage
   useEffect(() => {
     if (!isStorageReady) return;
 
     try {
       setItem("favoriteFonts", favorites);
     } catch (error) {
-      console.error("Error saving font favorites:", error);
+      console.error("⚠️ Error saving font favorites:", error);
     }
   }, [favorites, isStorageReady, setItem]);
 
@@ -165,7 +169,6 @@ export function FontProvider({ children }: { children: React.ReactNode }) {
   };
 
   const setFontSize = (size: FontSize) => {
-    // Only update if the size is different
     if (size.size !== fontSize.size) {
       setCurrentFontSize(size);
       recordActivity("font_size_changed", { fontSize: size.size });
@@ -173,28 +176,27 @@ export function FontProvider({ children }: { children: React.ReactNode }) {
   };
 
   const toggleFavorite = (name: string) => {
-    if (favorites.includes(name)) {
-      setFavorites(favorites.filter((f) => f !== name));
-    } else {
-      setFavorites([...favorites, name]);
-    }
+    setFavorites((prev) =>
+      prev.includes(name) ? prev.filter((f) => f !== name) : [...prev, name],
+    );
   };
 
+  const contextValue = useMemo(
+    () => ({
+      currentFont,
+      setFont,
+      availableFonts,
+      favorites,
+      toggleFavorite,
+      fontSize,
+      setFontSize,
+      availableSizes,
+    }),
+    [currentFont, favorites, fontSize],
+  );
+
   return (
-    <FontContext.Provider
-      value={{
-        currentFont,
-        setFont,
-        availableFonts,
-        favorites,
-        toggleFavorite,
-        fontSize,
-        setFontSize,
-        availableSizes,
-      }}
-    >
-      {children}
-    </FontContext.Provider>
+    <FontContext.Provider value={contextValue}>{children}</FontContext.Provider>
   );
 }
 

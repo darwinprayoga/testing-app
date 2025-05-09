@@ -1,8 +1,7 @@
 "use client";
 
 import type React from "react";
-
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -24,96 +23,79 @@ import { LanguageTab } from "./language-tab";
 
 export function SettingsDrawer() {
   const [open, setOpen] = useState(false);
-  const { getItem, setItem, isStorageReady } = useStorage();
-
-  // Load drawer state from localStorage on mount
-  useEffect(() => {
-    const loadDrawerState = async () => {
-      if (!isStorageReady) return;
-
-      try {
-        const savedState = await getItem("settingsDrawerOpen");
-        if (savedState) {
-          setOpen(savedState === "true");
-        }
-      } catch (error) {
-        console.error("Error loading drawer state:", error);
-      }
-    };
-
-    loadDrawerState();
-  }, [isStorageReady, getItem]);
-
-  // Save drawer state to localStorage when it changes
-  useEffect(() => {
-    if (isStorageReady) {
-      setItem("settingsDrawerOpen", open.toString());
-    }
-  }, [open, isStorageReady, setItem]);
-
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("themes");
 
+  const initializedRef = useRef(false);
+  const { getItem, setItem, isStorageReady } = useStorage();
   const { t } = useLanguage();
   const { recordActivity, getLastActivity } = useActivity();
 
-  // First, add a ref to track initialization
-  const initializedRef = useRef(false);
-
-  // Restore user context on mount
+  // Restore drawer open state
   useEffect(() => {
-    if (!initializedRef.current) {
-      initializedRef.current = true;
-      const lastTabSelected = getLastActivity("tab_selected");
-      const lastSearchPerformed = getLastActivity("search_performed");
+    if (!isStorageReady) return;
 
-      if (lastTabSelected && lastTabSelected.details?.tabId) {
-        const tabId = lastTabSelected.details.tabId;
-        if (tabId === "themes" || tabId === "fonts" || tabId === "language") {
-          setActiveTab(tabId);
-        }
-      }
+    getItem("settingsDrawerOpen")
+      .then((saved) => {
+        if (saved) setOpen(saved);
+      })
+      .catch((err) => console.error("Error loading drawer state:", err));
+  }, [isStorageReady, getItem]);
 
-      if (lastSearchPerformed && lastSearchPerformed.details?.searchQuery) {
-        setSearchQuery(lastSearchPerformed.details.searchQuery);
-      }
-    }
+  // Persist drawer state
+  useEffect(() => {
+    if (isStorageReady) setItem("settingsDrawerOpen", open);
+  }, [open, isStorageReady, setItem]);
+
+  // Restore tab & search query
+  useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
+    const lastTab = getLastActivity("tab_selected")?.details?.tabId;
+    const lastSearch =
+      getLastActivity("search_performed")?.details?.searchQuery;
+
+    if (["themes", "fonts", "language"].includes(lastTab))
+      setActiveTab(lastTab);
+    if (lastSearch) setSearchQuery(lastSearch);
   }, [getLastActivity]);
 
+  // Persist search query
   useEffect(() => {
-    if (isStorageReady) {
-      setItem("settingsSearchQuery", searchQuery);
-    }
+    if (isStorageReady) setItem("settingsSearchQuery", searchQuery);
   }, [searchQuery, isStorageReady, setItem]);
 
-  // Record activity when settings dialog is opened
-  useEffect(() => {
-    if (open && initializedRef.current) {
-      recordActivity("settings_opened");
-    }
-  }, [open, recordActivity]);
+  const handleTabChange = useCallback(
+    (tabId: string) => {
+      setActiveTab(tabId);
+      recordActivity("tab_selected", { tabId });
+    },
+    [recordActivity],
+  );
 
-  // Record activity when tab is changed
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    recordActivity("tab_selected", { tabId: value });
-  };
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const query = e.target.value;
+      setSearchQuery(query);
+      recordActivity("search_performed", { searchQuery: query });
+    },
+    [recordActivity],
+  );
 
-  // Record activity when search is performed
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-    recordActivity("search_performed", { searchQuery: query });
-  };
+  const handleClose = useCallback(() => {
+    setOpen(false);
+  }, []);
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
         <Button variant="ghost" size="icon" className="text-primary">
           <Settings className="h-5 w-5" />
-          <span className="sr-only">Settings</span>
+          <span className="sr-only">{t("settings")}</span>
         </Button>
       </DrawerTrigger>
+
       <DrawerContent>
         <div className="mx-auto w-full max-w-md">
           <DrawerHeader>
@@ -122,7 +104,6 @@ export function SettingsDrawer() {
           </DrawerHeader>
 
           <Tabs
-            defaultValue={activeTab}
             value={activeTab}
             onValueChange={handleTabChange}
             className="px-4"
@@ -134,7 +115,7 @@ export function SettingsDrawer() {
               </TabsTrigger>
               <TabsTrigger value="fonts">
                 <Type className="h-4 w-4 mr-2" />
-                Fonts
+                {t("allFonts")}
               </TabsTrigger>
               <TabsTrigger value="language">
                 <Languages className="h-4 w-4 mr-2" />
@@ -162,7 +143,7 @@ export function SettingsDrawer() {
           </Tabs>
 
           <DrawerFooter>
-            <Button onClick={() => setOpen(false)}>Close</Button>
+            <Button onClick={handleClose}>{t("close")}</Button>
           </DrawerFooter>
         </div>
       </DrawerContent>

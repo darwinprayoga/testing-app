@@ -13,6 +13,7 @@ interface ClipboardContentProps {
   onTextChange: (text: string) => void;
   onToggleEditMode: () => void;
   textareaRef: React.RefObject<HTMLTextAreaElement>;
+  typing: () => void;
 }
 
 export function ClipboardContent({
@@ -22,6 +23,7 @@ export function ClipboardContent({
   onTextChange,
   onToggleEditMode,
   textareaRef,
+  typing,
 }: ClipboardContentProps) {
   const { t } = useLanguage();
 
@@ -38,6 +40,8 @@ export function ClipboardContent({
       // Regular typing
       onTextChange(newText);
     }
+
+    typing();
   };
 
   const handleKeyboardPaste = (e: React.KeyboardEvent) => {

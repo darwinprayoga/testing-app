@@ -53,7 +53,7 @@ export default function Home() {
       if (isStorageReady) {
         const savedState = await getItem("infoDrawerOpen");
         if (savedState) {
-          setInfoDrawerOpen(savedState === "true");
+          setInfoDrawerOpen(savedState);
         }
       }
     };
@@ -63,7 +63,7 @@ export default function Home() {
   // Save info drawer state to storage
   useEffect(() => {
     if (isStorageReady) {
-      setItem("infoDrawerOpen", String(infoDrawerOpen));
+      setItem("infoDrawerOpen", infoDrawerOpen);
     }
   }, [infoDrawerOpen, isStorageReady, setItem]);
 
@@ -76,8 +76,8 @@ export default function Home() {
   useEffect(() => {
     // Show loading screen for 1 second
     const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
+      !isStorageReady && setIsLoading(false);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, []);
@@ -110,8 +110,12 @@ export default function Home() {
     recordActivity("tab_selected", { tabId: value });
   };
 
+  if (!isStorageReady) {
+    return null; // Initial blank render
+  }
+
   if (isLoading) {
-    return <LoadingScreen />;
+    return <LoadingScreen />; // Show loading screen after storage is ready
   }
 
   return (

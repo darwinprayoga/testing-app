@@ -15,6 +15,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Clipbored | Your daily hand",
   description: "Clipboard and To-do in one App",
+  manifest: "/manifest.json",
   generator: "prayoga.io",
 };
 
@@ -41,16 +42,16 @@ export default function RootLayout({
           enableSystem
         >
           <StorageProvider>
-            <ThemeProvider>
-              <ActivityProvider>
+            <ActivityProvider>
+              <ThemeProvider>
                 <FontProvider>
                   <LanguageProvider>
                     {children}
                     <Toaster />
                   </LanguageProvider>
                 </FontProvider>
-              </ActivityProvider>
-            </ThemeProvider>
+              </ThemeProvider>
+            </ActivityProvider>
           </StorageProvider>
         </NextThemesProvider>
       </body>

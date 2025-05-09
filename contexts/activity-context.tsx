@@ -14,6 +14,8 @@ export type ActivityType =
   | "font_changed"
   | "font_size_changed"
   | "theme_changed"
+  | "share_access"
+  | "shared_users"
   | "language_changed";
 
 // Activity record structure
@@ -21,12 +23,6 @@ export interface ActivityRecord {
   type: ActivityType;
   timestamp: number;
   details?: {
-    tabId?: string;
-    searchQuery?: string;
-    fontName?: string;
-    fontSize?: number;
-    themeName?: string;
-    languageCode?: string;
     [key: string]: any;
   };
 }
@@ -97,6 +93,8 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
       type === "language_changed" ||
       type === "settings_opened" ||
       type === "tab_selected" ||
+      type === "share_access" ||
+      type === "shared_users" ||
       type === "search_performed"
     ) {
       // Check if this is a duplicate of the most recent activity
