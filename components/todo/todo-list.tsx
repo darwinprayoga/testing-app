@@ -49,9 +49,9 @@ export function TodoList({
   const showSelection = activeTab === "archived";
 
   return (
-    <ScrollArea className="min-h-[290px]">
+    <main className="min-h-[290px]">
       <div className="p-2">
-        <table className="w-full table-fixed">
+        <table className="w-full table-auto">
           <thead>
             <tr className="text-left text-xs text-muted-foreground">
               {showSelection && <th className="w-8 text-center"></th>}
@@ -90,6 +90,6 @@ export function TodoList({
           </tbody>
         </table>
       </div>
-    </ScrollArea>
+    </main>
   );
 }

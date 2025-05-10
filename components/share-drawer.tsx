@@ -66,8 +66,6 @@ const initialUsers: SharedUser[] = [
   },
 ];
 
-const dummyShareLink = "https://clipbored.prayoga.io/share/83f029ac";
-
 export function ShareDrawer() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [shareAccess, setShareAccess] = useState<"restricted" | "anyone">(
@@ -83,6 +81,12 @@ export function ShareDrawer() {
   const { t } = useLanguage();
 
   const initializedRef = useRef(false);
+
+  const [currentUrl, setCurrentUrl] = useState("");
+
+  useEffect(() => {
+    setCurrentUrl(window.location.href);
+  }, []);
 
   useEffect(() => {
     if (!isStorageReady) return;
@@ -112,7 +116,7 @@ export function ShareDrawer() {
   }, [getLastActivity]);
 
   const handleCopyLink = useCallback(() => {
-    navigator.clipboard.writeText(dummyShareLink).then(() => {
+    navigator.clipboard.writeText(currentUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -332,7 +336,7 @@ export function ShareDrawer() {
                 <CircleUserRound className="h-4 w-4 ml-1 text-primary" />
                 <input
                   className="flex-1 bg-transparent text-sm border-none outline-none"
-                  value={dummyShareLink}
+                  value={currentUrl}
                   readOnly
                 />
               </div>

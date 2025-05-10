@@ -60,11 +60,13 @@ export function PwaDrawer() {
         onPwaInstallAvailableEvent={(event) => console.log(event)}
       ></PWAInstall>
 
-      <DrawerTrigger asChild>
-        <button className="p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors">
-          <Download className="h-5 w-5 text-primary" />
-        </button>
-      </DrawerTrigger>
+      {pwaInstallRef.current?.isInstallAvailable && (
+        <DrawerTrigger asChild>
+          <button className="p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors">
+            <Download className="h-5 w-5 text-primary" />
+          </button>
+        </DrawerTrigger>
+      )}
 
       <DrawerContent>
         <div className="mx-auto w-full max-w-sm">

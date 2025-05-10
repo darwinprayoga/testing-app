@@ -23,7 +23,6 @@ export function Todo() {
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const { t, currentLanguage } = useLanguage();
   const { getItem, setItem, isStorageReady } = useStorage();
-  const initializedRef = useRef(false);
 
   const persist = useDebouncedCallback((key: string, value: any) => {
     if (isStorageReady) setItem(key, value);
@@ -41,8 +40,7 @@ export function Todo() {
   }, [persist]);
 
   useEffect(() => {
-    if (!isStorageReady || initializedRef.current) return;
-    initializedRef.current = true;
+    if (!isStorageReady) return;
 
     const loadTodosFromStorage = async () => {
       try {
@@ -99,19 +97,38 @@ export function Todo() {
   };
 
   useEffect(() => {
-    if (isStorageReady) persist("todos", todos);
-    console.log(todos);
-  }, [todos, isStorageReady]);
+    if (!isStorageReady) return;
+
+    try {
+      persist("todos", todos);
+    } catch (error) {
+      console.error("Failed to save todos to storage:", error);
+    }
+  }, [todos, isStorageReady, persist]);
 
   useEffect(() => {
     if (isStorageReady) persist("todoActiveTab", activeTab);
-  }, [activeTab, isStorageReady]);
+  }, [activeTab, isStorageReady, persist]);
 
   useEffect(() => {
     if (isStorageReady) persist("todoIsAdding", isAdding);
-  }, [isAdding, isStorageReady]);
+  }, [isAdding, isStorageReady, persist]);
+
+  useEffect(() => {
+    // Focus the first input element when the step changes
+    const inputElement = document.querySelector(
+      "input:not([disabled])",
+    ) as HTMLInputElement;
+    if (isAdding) {
+      setTimeout(() => {
+        inputElement.focus();
+      }, 100);
+    }
+  }, [isAdding]);
 
   const addTask = async (text: string) => {
+    let data: TodoItem[];
+
     const oneHourOneMinuteLater = Date.now() + (60 + 60 * 60) * 1000;
 
     const newTodo: TodoItem = {
@@ -124,7 +141,18 @@ export function Todo() {
       createdAt: oneHourOneMinuteLater,
     };
 
-    return newTodo;
+    data = [...todos, newTodo];
+
+    if (Array.isArray(data)) {
+      setTodos(data);
+      setTimeout(() => {
+        persist("todos", data);
+        console.log(data);
+      }, 100);
+    }
+
+    setIsAdding(false);
+    setNewTaskText("");
   };
 
   const toggleComplete = (id: string) => {
@@ -288,12 +316,7 @@ export function Todo() {
                 // Allow Enter to create a new line
                 if (e.key === "Enter" && e.ctrlKey) {
                   e.preventDefault();
-                  addTask(newTaskText)
-                    .then((v) => setTodos([...todos, v]))
-                    .finally(() => {
-                      setIsAdding(false);
-                      setNewTaskText("");
-                    });
+                  addTask(newTaskText);
                 }
               }}
               rows={1}
@@ -302,14 +325,7 @@ export function Todo() {
               <Button
                 disabled={!newTaskText}
                 size="sm"
-                onClick={() =>
-                  addTask(newTaskText)
-                    .then((v) => setTodos([...todos, v]))
-                    .finally(() => {
-                      setIsAdding(false);
-                      setNewTaskText("");
-                    })
-                }
+                onClick={() => addTask(newTaskText)}
               >
                 {t("addTask")}
               </Button>

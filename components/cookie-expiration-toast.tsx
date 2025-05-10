@@ -15,13 +15,28 @@ export function CookieExpirationToast() {
 
   const hasDisplayedToast = useRef(false);
 
+  const safeGetLocalStorageItem = (key: string): string | null => {
+    try {
+      return typeof window !== "undefined" && window.localStorage
+        ? window.localStorage.getItem(key)
+        : null;
+    } catch {
+      return null;
+    }
+  };
+
   const getExpirationTime = (): string => {
     try {
-      const rawExpiry = localStorage.getItem("dataStorageExpires");
+      const rawExpiry = safeGetLocalStorageItem("dataStorageExpires");
+      console.log("Raw expiry value:", rawExpiry);
       if (!rawExpiry) return "unknown";
 
       const decoded = decodeURIComponent(rawExpiry);
+      console.log("Decoded expiry:", decoded);
+
       const expiryDate = new Date(decoded);
+      console.log("Parsed expiry date:", expiryDate.toISOString());
+
       return isNaN(expiryDate.getTime())
         ? "unknown"
         : formatDistanceToNow(expiryDate, { addSuffix: false });

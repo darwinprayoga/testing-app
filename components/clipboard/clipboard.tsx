@@ -87,11 +87,9 @@ export function Clipboard({ isMobile = false }: ClipboardProps) {
     })();
   }, [currentLanguage, isStorageReady]);
 
-  // Auto-focus if empty
   useEffect(() => {
     if (!currentText && !currentImage && history.length === 0) {
       setIsEditMode(true);
-      setTimeout(() => textareaRef.current?.focus(), 100);
     }
   }, [currentText, currentImage, history]);
 
@@ -245,7 +243,7 @@ export function Clipboard({ isMobile = false }: ClipboardProps) {
     }
     setCurrentText("");
     setCurrentImage(null);
-    setTimeout(() => textareaRef.current?.focus(), 0);
+    setTimeout(() => textareaRef.current?.focus(), 100);
   };
 
   const deleteHistoryItem = (id: string) => {
@@ -256,7 +254,7 @@ export function Clipboard({ isMobile = false }: ClipboardProps) {
   const toggleEditMode = () => {
     const next = !isEditMode;
     setIsEditMode(next);
-    if (next) setTimeout(() => textareaRef.current?.focus(), 0);
+    if (next) setTimeout(() => textareaRef.current?.focus(), 100);
   };
 
   return (

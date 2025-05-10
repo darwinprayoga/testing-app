@@ -53,6 +53,38 @@ export function ProfileDrawer() {
   const { recordActivity, getLastActivity } = useActivity();
   const initializedRef = useRef(false);
 
+  // get exparation
+  const safeGetLocalStorageItem = (key: string): string | null => {
+    try {
+      return typeof window !== "undefined" && window.localStorage
+        ? window.localStorage.getItem(key)
+        : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const getExpirationTime = (): string => {
+    try {
+      const rawExpiry = safeGetLocalStorageItem("dataStorageExpires");
+      console.log("Raw expiry value:", rawExpiry);
+      if (!rawExpiry) return "unknown";
+
+      const decoded = decodeURIComponent(rawExpiry);
+      console.log("Decoded expiry:", decoded);
+
+      const expiryDate = new Date(decoded);
+      console.log("Parsed expiry date:", expiryDate.toISOString());
+
+      return isNaN(expiryDate.getTime())
+        ? "unknown"
+        : formatDistanceToNow(expiryDate, { addSuffix: false });
+    } catch (error) {
+      console.error("Failed to read cookie expiration:", error);
+      return "unknown";
+    }
+  };
+
   // Load profile data from storage on init
   useEffect(() => {
     const loadFromStorage = async () => {
@@ -129,12 +161,6 @@ export function ProfileDrawer() {
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     recordActivity("tab_selected", { tabId: tab });
-  };
-
-  const getCookieExpirationText = () => {
-    const expirationDate = new Date();
-    expirationDate.setTime(expirationDate.getTime() + 3 * 24 * 60 * 60 * 1000);
-    return formatDistanceToNow(expirationDate);
   };
 
   const handleResetData = () => {
@@ -267,7 +293,7 @@ export function ProfileDrawer() {
                 storageType={storageType}
                 handleDataStorageChange={handleDataStorageChange}
                 openResetDialog={() => setResetDialogOpen(true)}
-                getCookieExpirationText={getCookieExpirationText}
+                getCookieExpirationText={getExpirationTime}
               />
             </TabsContent>
           </Tabs>

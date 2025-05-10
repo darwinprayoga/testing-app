@@ -219,10 +219,6 @@
 
 /* Mobile-specific fixes for todo list */
 @media (max-width: 640px) {
-  .todo-container table {
-    table-layout: fixed;
-  }
-
   .todo-container td {
     word-break: break-word;
     max-width: 100%;

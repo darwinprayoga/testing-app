@@ -2,7 +2,7 @@
 // These jokes are organized by language code and context (todo or clipboard)
 
 export type JokeType = {
-  text: string;
+  text?: string;
   description?: string;
   priority?: string;
   // For clipboard jokes
