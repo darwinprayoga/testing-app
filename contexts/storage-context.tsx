@@ -73,7 +73,7 @@ const cookieUtils = {
     ),
 };
 
-const localUtils = {
+export const localUtils = {
   set: (key: string, value: any) => {
     const encoded = storageJSON.encode(value);
     localStorage.setItem(key, encoded);

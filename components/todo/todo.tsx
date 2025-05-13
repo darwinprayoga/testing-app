@@ -86,7 +86,6 @@ export function Todo() {
       if (isStorageReady) {
         try {
           persist("todos", dummyTodos);
-          console.log("Dummy todos saved to storage:", dummyTodos.length);
         } catch (error) {
           console.error("Error saving dummy todos to storage:", error);
         }
@@ -121,7 +120,7 @@ export function Todo() {
     ) as HTMLInputElement;
     if (isAdding) {
       setTimeout(() => {
-        inputElement.focus();
+        inputElement?.focus();
       }, 100);
     }
   }, [isAdding]);
@@ -147,7 +146,6 @@ export function Todo() {
       setTodos(data);
       setTimeout(() => {
         persist("todos", data);
-        console.log(data);
       }, 100);
     }
 

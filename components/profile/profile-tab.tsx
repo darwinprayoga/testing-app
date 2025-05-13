@@ -1,15 +1,27 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useEffect } from "react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import Image from "next/image"
-import { useLanguage } from "@/contexts/language-context"
-import type { ProfileTabProps } from "./types"
+import { useState, useEffect } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import Image from "next/image";
+import { useLanguage } from "@/contexts/language-context";
+import type { ProfileTabProps } from "./types";
+
+export const sanitizedUsername = (e: string) => {
+  // 1. Force lowercase
+  // 2. Remove spaces
+  // 3. Allow only a-z, 0-9, dot, underscore
+  const sanitizedValue = e
+    .toLowerCase()
+    .replace(/\s+/g, "") // remove spaces
+    .replace(/[^a-z0-9._]/g, ""); // remove disallowed characters
+
+  return sanitizedValue;
+};
 
 export function ProfileTab({
   user,
@@ -19,45 +31,44 @@ export function ProfileTab({
   usernameError,
   setUsernameError,
 }: ProfileTabProps) {
-  const { t } = useLanguage()
-  const [username, setUsername] = useState(user.username)
+  const { t } = useLanguage();
+  const [username, setUsername] = useState(user.username);
 
   // Update local state when user prop changes
   useEffect(() => {
-    setUsername(user.username)
-  }, [user.username])
+    setUsername(user.username);
+  }, [user.username]);
 
   // Username validation
   const validateUsername = (value: string) => {
-    const usernameRegex = /^[a-zA-Z0-9._]{3,30}$/
+    const usernameRegex = /^[a-zA-Z0-9._]{3,30}$/;
 
     if (!value.trim()) {
-      setUsernameError(t("usernameRequired"))
-      return false
+      setUsernameError(t("usernameRequired"));
+      return false;
     }
 
     if (!usernameRegex.test(value)) {
-      setUsernameError(t("usernameInvalid"))
-      return false
+      setUsernameError(t("usernameInvalid"));
+      return false;
     }
 
-    setUsernameError(null)
-    return true
-  }
+    setUsernameError(null);
+    return true;
+  };
 
   const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setUsername(value)
-
+    const value = sanitizedUsername(e.target.value);
+    setUsername(value);
     // Validate on change but don't update the profile yet
-    validateUsername(value)
-  }
+    validateUsername(value);
+  };
 
   const handleUsernameBlur = () => {
     if (validateUsername(username)) {
-      updateProfile("username", username)
+      updateProfile("username", username);
     }
-  }
+  };
 
   if (user.isLoggedIn) {
     return (
@@ -78,7 +89,9 @@ export function ProfileTab({
           <div className="grid gap-2">
             <Label htmlFor="username" className="flex items-center gap-1">
               {t("username")}
-              {usernameError && <span className="text-xs text-red-500 ml-1">*</span>}
+              {usernameError && (
+                <span className="text-xs text-red-500 ml-1">*</span>
+              )}
             </Label>
             <Input
               id="username"
@@ -86,9 +99,13 @@ export function ProfileTab({
               onChange={handleUsernameChange}
               onBlur={handleUsernameBlur}
               placeholder={t("yourUsername")}
-              className={usernameError ? "border-red-500 focus-visible:ring-red-500" : ""}
+              className={
+                usernameError ? "border-red-500 focus-visible:ring-red-500" : ""
+              }
             />
-            {usernameError && <p className="text-xs text-red-500 mt-1">{usernameError}</p>}
+            {usernameError && (
+              <p className="text-xs text-red-500 mt-1">{usernameError}</p>
+            )}
             <p className="text-xs text-muted-foreground">{t("usernameHint")}</p>
           </div>
           <div className="grid gap-2">
@@ -106,25 +123,36 @@ export function ProfileTab({
             <div>
               <h4 className="text-sm font-medium">{t("premiumStatus")}</h4>
               <p className="text-xs text-muted-foreground">
-                {user.hasPremium ? t("activeSubscription") : t("noActiveSubscription")}
+                {user.hasPremium
+                  ? t("activeSubscription")
+                  : t("noActiveSubscription")}
               </p>
             </div>
-            <Button variant={user.hasPremium ? "outline" : "default"} size="sm" onClick={togglePremium}>
+            <Button
+              variant={user.hasPremium ? "outline" : "default"}
+              size="sm"
+              onClick={togglePremium}
+            >
               {user.hasPremium ? t("cancelPremium") : t("upgradeToPremium")}
             </Button>
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="flex flex-col items-center">
-      <Button onClick={handleGoogleLogin} className="w-full mb-4 flex items-center gap-2 justify-center">
+      <Button
+        onClick={handleGoogleLogin}
+        className="w-full mb-4 flex items-center gap-2 justify-center"
+      >
         <Image src="/google.svg" alt="Google" width={18} height={18} />
         {t("continueWith")}
       </Button>
-      <p className="text-sm text-muted-foreground text-center mt-4">{t("termsDesc")}</p>
+      <p className="text-sm text-muted-foreground text-center mt-4">
+        {t("termsDesc")}
+      </p>
     </div>
-  )
+  );
 }

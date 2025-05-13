@@ -9,6 +9,8 @@ import { FontProvider } from "@/contexts/font-context";
 import { ActivityProvider } from "@/contexts/activity-context";
 import { StorageProvider } from "@/contexts/storage-context";
 import { Toaster } from "@/components/toaster";
+import { AuthProvider } from "@/contexts/auth-context";
+import { CleanupHash } from "@/components/cleanup-hash";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -46,7 +48,10 @@ export default function RootLayout({
               <ThemeProvider>
                 <FontProvider>
                   <LanguageProvider>
-                    {children}
+                    <AuthProvider>
+                      <CleanupHash />
+                      {children}
+                    </AuthProvider>
                     <Toaster />
                   </LanguageProvider>
                 </FontProvider>

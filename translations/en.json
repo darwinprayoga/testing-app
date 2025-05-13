@@ -185,6 +185,16 @@
     "dataMigrated": "Your data has been migrated to {storageType}.",
     "selectAll": "Select All",
     "deselectAll": "Deselect All",
-    "deleteSelected": "Delete Selected"
+    "deleteSelected": "Delete Selected",
+    "signInWithGoogle": "Sign in with Google",
+    "completeSignInInPopup": "Successfully sign in",
+    "signInFailed": "Sign in failed",
+    "signInFailedDesc": "There was an error signing in to your account",
+    "signOutFailed": "Sign out failed",
+    "signOutFailedDesc": "There was an error signing out of your account",
+    "popupBlocked": "The pop up is blocked",
+    "enablePopups": "Enable the pop up to continue",
+    "updateProfileFailed": "Update profile failed",
+    "updateProfileFailedDesc": "There was an error updating your profile"
   }
 }

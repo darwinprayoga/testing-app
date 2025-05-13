@@ -17,13 +17,18 @@ import { LogOut } from "lucide-react";
 import { useLanguage } from "@/contexts/language-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
-import { useStorage, type StorageType } from "@/contexts/storage-context";
+import {
+  localUtils,
+  useStorage,
+  type StorageType,
+} from "@/contexts/storage-context";
 import { formatDistanceToNow } from "date-fns";
-import { ProfileTab } from "./profile-tab";
+import { ProfileTab, sanitizedUsername } from "./profile-tab";
 import { DataStorageTab } from "./data-storage-tab";
 import { ResetDataDialog } from "./reset-data-dialog";
 import type { User } from "./types";
 import { useActivity } from "@/contexts/activity-context";
+import { useAuth } from "@/contexts/auth-context";
 
 const DEFAULT_USER: User = {
   username: "",
@@ -52,33 +57,13 @@ export function ProfileDrawer() {
   } = useStorage();
   const { recordActivity, getLastActivity } = useActivity();
   const initializedRef = useRef(false);
-
-  // get exparation
-  const safeGetLocalStorageItem = (key: string): string | null => {
-    try {
-      return typeof window !== "undefined" && window.localStorage
-        ? window.localStorage.getItem(key)
-        : null;
-    } catch {
-      return null;
-    }
-  };
+  const { signInWithGoogle, signOut, thisUser } = useAuth();
 
   const getExpirationTime = (): string => {
     try {
-      const rawExpiry = safeGetLocalStorageItem("dataStorageExpires");
-      console.log("Raw expiry value:", rawExpiry);
-      if (!rawExpiry) return "unknown";
+      const rawExpiry = localUtils.get("dataStorageExpires");
 
-      const decoded = decodeURIComponent(rawExpiry);
-      console.log("Decoded expiry:", decoded);
-
-      const expiryDate = new Date(decoded);
-      console.log("Parsed expiry date:", expiryDate.toISOString());
-
-      return isNaN(expiryDate.getTime())
-        ? "unknown"
-        : formatDistanceToNow(expiryDate, { addSuffix: false });
+      return formatDistanceToNow(rawExpiry, { addSuffix: false });
     } catch (error) {
       console.error("Failed to read cookie expiration:", error);
       return "unknown";
@@ -93,10 +78,24 @@ export function ProfileDrawer() {
         const [savedUser, savedDrawerOpen] = await Promise.all([
           getItem("userProfile"),
           getItem("profileDrawerOpen"),
-          getItem("profileActiveTab"),
         ]);
 
-        if (savedUser) setUser(savedUser);
+        if (thisUser) {
+          const rawValue = thisUser.user_metadata.full_name;
+          const sanitizedValue = sanitizedUsername(rawValue);
+
+          setUser({
+            username: sanitizedValue,
+            email: `${thisUser?.email}`,
+            image: thisUser?.user_metadata.avatar_url,
+            isLoggedIn: true,
+            hasPremium: false,
+          });
+        } else {
+          if (savedUser) setUser(savedUser);
+          if (savedDrawerOpen) setIsDrawerOpen(savedDrawerOpen);
+        }
+
         if (savedDrawerOpen) setIsDrawerOpen(savedDrawerOpen);
       } catch (err) {
         console.error("Failed to load profile drawer data:", err);
@@ -139,19 +138,11 @@ export function ProfileDrawer() {
     [],
   );
 
-  const handleGoogleLogin = () =>
-    setUser({
-      username: "johndoe",
-      email: "john.doe@example.com",
-      image: "",
-      isLoggedIn: true,
-      hasPremium: false,
-    });
-
   const handleLogout = () => {
     setUser(DEFAULT_USER);
     setStorageType("cookies");
     setIsDrawerOpen(false);
+    signOut();
   };
 
   const handleDataStorageChange = (value: StorageType) => {
@@ -175,47 +166,52 @@ export function ProfileDrawer() {
   };
 
   const togglePremium = () => {
-    if (!user.isLoggedIn) {
-      toast({
-        title: t("loginRequired"),
-        description: t("loginBeforeSubscribing"),
-        variant: "destructive",
-      });
-      return;
-    }
+    // if (!user.isLoggedIn) {
+    //   toast({
+    //     title: t("loginRequired"),
+    //     description: t("loginBeforeSubscribing"),
+    //     variant: "destructive",
+    //   });
+    //   return;
+    // }
 
-    const newPremium = !user.hasPremium;
-    updateProfile("hasPremium", newPremium);
+    // const newPremium = !user.hasPremium;
+    // updateProfile("hasPremium", newPremium);
+
+    // toast({
+    //   title: newPremium ? t("premiumActivated") : t("premiumCancelled"),
+    //   description: newPremium
+    //     ? t("premiumActivatedDesc")
+    //     : t("premiumCancelledDesc"),
+    // });
+
+    // if (!newPremium && storageType === "cloud") {
+    //   setStorageType("localStorage");
+    // }
+
+    // if (newPremium) {
+    //   setActiveTab("data");
+    //   setTimeout(() => {
+    //     toast({
+    //       title: t("cloudStorageAvailable"),
+    //       description: t("cloudStorageAvailableDesc"),
+    //       action: (
+    //         <Button
+    //           size="sm"
+    //           variant="outline"
+    //           onClick={() => setStorageType("cloud")}
+    //         >
+    //           {t("switchToCloud")}
+    //         </Button>
+    //       ),
+    //     });
+    //   }, 1000);
+    // }
 
     toast({
-      title: newPremium ? t("premiumActivated") : t("premiumCancelled"),
-      description: newPremium
-        ? t("premiumActivatedDesc")
-        : t("premiumCancelledDesc"),
+      title: t("premiumCancelled"),
+      description: t("premiumCancelledDesc"),
     });
-
-    if (!newPremium && storageType === "cloud") {
-      setStorageType("localStorage");
-    }
-
-    if (newPremium) {
-      setActiveTab("data");
-      setTimeout(() => {
-        toast({
-          title: t("cloudStorageAvailable"),
-          description: t("cloudStorageAvailableDesc"),
-          action: (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setStorageType("cloud")}
-            >
-              {t("switchToCloud")}
-            </Button>
-          ),
-        });
-      }, 1000);
-    }
   };
 
   return (
@@ -225,7 +221,7 @@ export function ProfileDrawer() {
           <Avatar>
             {user.isLoggedIn ? (
               <>
-                <AvatarImage src={user.image || ""} />
+                <AvatarImage src={user.image} />
                 <AvatarFallback className="bg-primary text-white">
                   {user.username
                     .split(" ")
@@ -280,7 +276,7 @@ export function ProfileDrawer() {
               <ProfileTab
                 user={user}
                 updateProfile={updateProfile}
-                handleGoogleLogin={handleGoogleLogin}
+                handleGoogleLogin={signInWithGoogle}
                 togglePremium={togglePremium}
                 usernameError={usernameError}
                 setUsernameError={setUsernameError}

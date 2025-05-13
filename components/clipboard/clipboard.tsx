@@ -141,7 +141,7 @@ export function Clipboard({ isMobile = false }: ClipboardProps) {
     ) as HTMLInputElement;
     if (isEditMode) {
       setTimeout(() => {
-        inputElement.focus();
+        inputElement?.focus();
       }, 100);
     }
   }, [isEditMode]);
