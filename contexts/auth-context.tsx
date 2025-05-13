@@ -8,7 +8,6 @@ import type { User, Session } from "@supabase/supabase-js";
 import { useToast } from "@/components/ui/use-toast";
 import { useLanguage } from "./language-context";
 import { supabase } from "@/utils/supabase/client";
-import { usePathname, useRouter } from "next/navigation";
 
 type AuthContextType = {
   thisUser: User | null;
@@ -134,14 +133,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         throw error;
-      }
-
-      // Open the authorization URL in a popup
-      if (data.url) {
-        toast({
-          title: t("signInWithGoogle"),
-          description: t("completeSignInInPopup"),
-        });
       }
     } catch (error: any) {
       toast({

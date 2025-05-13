@@ -186,8 +186,6 @@
     "selectAll": "Select All",
     "deselectAll": "Deselect All",
     "deleteSelected": "Delete Selected",
-    "signInWithGoogle": "Sign in with Google",
-    "completeSignInInPopup": "Successfully sign in",
     "signInFailed": "Sign in failed",
     "signInFailedDesc": "There was an error signing in to your account",
     "signOutFailed": "Sign out failed",
