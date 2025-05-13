@@ -166,52 +166,47 @@ export function ProfileDrawer() {
   };
 
   const togglePremium = () => {
-    // if (!user.isLoggedIn) {
-    //   toast({
-    //     title: t("loginRequired"),
-    //     description: t("loginBeforeSubscribing"),
-    //     variant: "destructive",
-    //   });
-    //   return;
-    // }
+    if (!user.isLoggedIn) {
+      toast({
+        title: t("loginRequired"),
+        description: t("loginBeforeSubscribing"),
+        variant: "destructive",
+      });
+      return;
+    }
 
-    // const newPremium = !user.hasPremium;
-    // updateProfile("hasPremium", newPremium);
-
-    // toast({
-    //   title: newPremium ? t("premiumActivated") : t("premiumCancelled"),
-    //   description: newPremium
-    //     ? t("premiumActivatedDesc")
-    //     : t("premiumCancelledDesc"),
-    // });
-
-    // if (!newPremium && storageType === "cloud") {
-    //   setStorageType("localStorage");
-    // }
-
-    // if (newPremium) {
-    //   setActiveTab("data");
-    //   setTimeout(() => {
-    //     toast({
-    //       title: t("cloudStorageAvailable"),
-    //       description: t("cloudStorageAvailableDesc"),
-    //       action: (
-    //         <Button
-    //           size="sm"
-    //           variant="outline"
-    //           onClick={() => setStorageType("cloud")}
-    //         >
-    //           {t("switchToCloud")}
-    //         </Button>
-    //       ),
-    //     });
-    //   }, 1000);
-    // }
+    const newPremium = !user.hasPremium;
+    updateProfile("hasPremium", newPremium);
 
     toast({
-      title: t("premiumCancelled"),
-      description: t("premiumCancelledDesc"),
+      title: newPremium ? t("premiumActivated") : t("premiumCancelled"),
+      description: newPremium
+        ? t("premiumActivatedDesc")
+        : t("premiumCancelledDesc"),
     });
+
+    if (!newPremium && storageType === "cloud") {
+      setStorageType("localStorage");
+    }
+
+    if (newPremium) {
+      setActiveTab("data");
+      setTimeout(() => {
+        toast({
+          title: t("cloudStorageAvailable"),
+          description: t("cloudStorageAvailableDesc"),
+          action: (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setStorageType("cloud")}
+            >
+              {t("switchToCloud")}
+            </Button>
+          ),
+        });
+      }, 1000);
+    }
   };
 
   return (

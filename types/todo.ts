@@ -7,6 +7,7 @@ export interface TodoItem {
   archived: boolean
   priority: string
   createdAt: number
+  username?: string // Optional for compatibility with existing code, but required for Supabase
 }
 
 // ETA format return type

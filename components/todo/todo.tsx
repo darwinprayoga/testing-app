@@ -12,6 +12,9 @@ import { getRandomJokes } from "@/data/jokes";
 import { useDebouncedCallback } from "use-debounce";
 import { autoResizeTextarea } from "@/utils/todo-utils";
 import { useEffect, useRef, useState } from "react";
+import { todoService } from "@/utils/supabase/services";
+import { useAuth } from "@/contexts/auth-context";
+import { sanitizedUsername } from "@/components/profile/profile-tab";
 
 export function Todo() {
   const [todos, setTodos] = useState<TodoItem[]>([]);
@@ -22,7 +25,8 @@ export function Todo() {
   const [selectedEtaDate, setSelectedEtaDate] = useState<Date>(new Date());
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const { t, currentLanguage } = useLanguage();
-  const { getItem, setItem, isStorageReady } = useStorage();
+  const { getItem, setItem, isStorageReady, storageType } = useStorage();
+  const { thisUser } = useAuth();
 
   const persist = useDebouncedCallback((key: string, value: any) => {
     if (isStorageReady) setItem(key, value);
@@ -44,11 +48,59 @@ export function Todo() {
 
     const loadTodosFromStorage = async () => {
       try {
-        const savedTodos = await getItem("todos");
-        if (Array.isArray(savedTodos)) {
-          setTodos(savedTodos);
+        // If the user is logged in and using cloud storage, fetch todos from Supabase
+        if (thisUser && storageType === "cloud") {
+          const username = sanitizedUsername(thisUser.user_metadata.full_name || thisUser.email?.split('@')[0] || 'user');
+          try {
+            const dbTodos = await todoService.getTodos(username);
+            if (dbTodos && dbTodos.length > 0) {
+              // Transform the database schema to match the app's schema
+              const formattedTodos = dbTodos.map(t => ({
+                id: t.id,
+                text: t.text || "",
+                description: t.description || "",
+                completed: t.completed || false,
+                archived: t.archived || false,
+                priority: t.priority || "-",
+                createdAt: t.created_at || Date.now(),
+              }));
+              setTodos(formattedTodos);
+            } else {
+              // If no todos in database, try local storage
+              const savedTodos = await getItem("todos");
+              if (Array.isArray(savedTodos)) {
+                setTodos(savedTodos);
+                
+                // Sync local todos to cloud
+                savedTodos.forEach(async (todo) => {
+                  // Add username field for Supabase
+                  await todoService.addTodo({
+                    ...todo,
+                    username
+                  });
+                });
+              } else {
+                loadDummyData();
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching todos from database:", error);
+            // Fallback to local storage
+            const savedTodos = await getItem("todos");
+            if (Array.isArray(savedTodos)) {
+              setTodos(savedTodos);
+            } else {
+              loadDummyData();
+            }
+          }
         } else {
-          loadDummyData();
+          // Standard local storage flow
+          const savedTodos = await getItem("todos");
+          if (Array.isArray(savedTodos)) {
+            setTodos(savedTodos);
+          } else {
+            loadDummyData();
+          }
         }
 
         const savedActiveTab = await getItem("todoActiveTab");
@@ -62,7 +114,7 @@ export function Todo() {
     };
 
     loadTodosFromStorage();
-  }, [isStorageReady, currentLanguage, getItem]);
+  }, [isStorageReady, currentLanguage, getItem, thisUser, storageType]);
 
   const loadDummyData = async () => {
     const savedTodos = await getItem("todos");
@@ -126,12 +178,11 @@ export function Todo() {
   }, [isAdding]);
 
   const addTask = async (text: string) => {
-    let data: TodoItem[];
-
     const oneHourOneMinuteLater = Date.now() + (60 + 60 * 60) * 1000;
+    const todoId = Date.now().toString(); // Use timestamp as ID for better uniqueness
 
     const newTodo: TodoItem = {
-      id: (todos.length + 1).toString(), // better than length-based ID
+      id: todoId,
       text: text,
       description: "",
       completed: false,
@@ -140,13 +191,25 @@ export function Todo() {
       createdAt: oneHourOneMinuteLater,
     };
 
-    data = [...todos, newTodo];
-
-    if (Array.isArray(data)) {
-      setTodos(data);
-      setTimeout(() => {
-        persist("todos", data);
-      }, 100);
+    const updatedTodos = [...todos, newTodo];
+    setTodos(updatedTodos);
+    
+    // Save to storage
+    setTimeout(() => {
+      persist("todos", updatedTodos);
+    }, 100);
+    
+    // Save to Supabase if using cloud storage
+    if (thisUser && storageType === "cloud") {
+      try {
+        const username = sanitizedUsername(thisUser.user_metadata.full_name || thisUser.email?.split('@')[0] || 'user');
+        await todoService.addTodo({
+          ...newTodo,
+          username
+        });
+      } catch (error) {
+        console.error("Failed to save todo to Supabase:", error);
+      }
     }
 
     setIsAdding(false);
@@ -154,54 +217,171 @@ export function Todo() {
   };
 
   const toggleComplete = (id: string) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo,
-      ),
+    const updatedTodos = todos.map((todo) =>
+      todo.id === id ? { ...todo, completed: !todo.completed } : todo
     );
+    setTodos(updatedTodos);
+    
+    // Update in Supabase if using cloud storage
+    if (thisUser && storageType === "cloud") {
+      try {
+        const username = sanitizedUsername(thisUser.user_metadata.full_name || thisUser.email?.split('@')[0] || 'user');
+        const todoToUpdate = updatedTodos.find(todo => todo.id === id);
+        if (todoToUpdate) {
+          todoService.updateTodo({
+            ...todoToUpdate,
+            username
+          });
+        }
+      } catch (error) {
+        console.error("Failed to update todo completion in Supabase:", error);
+      }
+    }
   };
 
   const archiveTask = (id: string) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, archived: true } : todo,
-      ),
+    const updatedTodos = todos.map((todo) =>
+      todo.id === id ? { ...todo, archived: true } : todo
     );
+    setTodos(updatedTodos);
+    
+    // Update in Supabase if using cloud storage
+    if (thisUser && storageType === "cloud") {
+      try {
+        const username = sanitizedUsername(thisUser.user_metadata.full_name || thisUser.email?.split('@')[0] || 'user');
+        const todoToUpdate = updatedTodos.find(todo => todo.id === id);
+        if (todoToUpdate) {
+          todoService.updateTodo({
+            ...todoToUpdate,
+            username
+          });
+        }
+      } catch (error) {
+        console.error("Failed to update todo archive status in Supabase:", error);
+      }
+    }
   };
 
   const deleteTask = (id: string) => {
     setTodos(todos.filter((todo) => todo.id !== id));
     setSelectedTasks(selectedTasks.filter((taskId) => taskId !== id));
+    
+    // Delete from Supabase if using cloud storage
+    if (thisUser && storageType === "cloud") {
+      try {
+        const username = sanitizedUsername(thisUser.user_metadata.full_name || thisUser.email?.split('@')[0] || 'user');
+        todoService.deleteTodo(id, username);
+      } catch (error) {
+        console.error("Failed to delete todo from Supabase:", error);
+      }
+    }
   };
 
   const deleteSelectedTasks = () => {
     setTodos(todos.filter((todo) => !selectedTasks.includes(todo.id)));
+    
+    // Delete selected tasks from Supabase if using cloud storage
+    if (thisUser && storageType === "cloud") {
+      try {
+        const username = sanitizedUsername(thisUser.user_metadata.full_name || thisUser.email?.split('@')[0] || 'user');
+        for (const id of selectedTasks) {
+          todoService.deleteTodo(id, username).catch(err => {
+            console.error(`Failed to delete todo ${id} from Supabase:`, err);
+          });
+        }
+      } catch (error) {
+        console.error("Failed to delete selected todos from Supabase:", error);
+      }
+    }
+    
     setSelectedTasks([]);
   };
 
   const restoreTask = (id: string) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, archived: false } : todo,
-      ),
+    const updatedTodos = todos.map((todo) =>
+      todo.id === id ? { ...todo, archived: false } : todo
     );
+    setTodos(updatedTodos);
     setSelectedTasks(selectedTasks.filter((taskId) => taskId !== id));
+    
+    // Update in Supabase if using cloud storage
+    if (thisUser && storageType === "cloud") {
+      try {
+        const username = sanitizedUsername(thisUser.user_metadata.full_name || thisUser.email?.split('@')[0] || 'user');
+        const todoToUpdate = updatedTodos.find(todo => todo.id === id);
+        if (todoToUpdate) {
+          todoService.updateTodo({
+            ...todoToUpdate,
+            username
+          });
+        }
+      } catch (error) {
+        console.error("Failed to update todo restore in Supabase:", error);
+      }
+    }
   };
 
   const updateTaskText = (id: string, text: string) => {
-    setTodos(todos.map((todo) => (todo.id === id ? { ...todo, text } : todo)));
+    const updatedTodos = todos.map((todo) => (todo.id === id ? { ...todo, text } : todo));
+    setTodos(updatedTodos);
+    
+    // Update in Supabase if using cloud storage
+    if (thisUser && storageType === "cloud") {
+      try {
+        const username = sanitizedUsername(thisUser.user_metadata.full_name || thisUser.email?.split('@')[0] || 'user');
+        const todoToUpdate = updatedTodos.find(todo => todo.id === id);
+        if (todoToUpdate) {
+          todoService.updateTodo({
+            ...todoToUpdate,
+            username
+          });
+        }
+      } catch (error) {
+        console.error("Failed to update todo text in Supabase:", error);
+      }
+    }
   };
 
   const updateDescription = (id: string, description: string) => {
-    setTodos(
-      todos.map((todo) => (todo.id === id ? { ...todo, description } : todo)),
-    );
+    const updatedTodos = todos.map((todo) => (todo.id === id ? { ...todo, description } : todo));
+    setTodos(updatedTodos);
+    
+    // Update in Supabase if using cloud storage
+    if (thisUser && storageType === "cloud") {
+      try {
+        const username = sanitizedUsername(thisUser.user_metadata.full_name || thisUser.email?.split('@')[0] || 'user');
+        const todoToUpdate = updatedTodos.find(todo => todo.id === id);
+        if (todoToUpdate) {
+          todoService.updateTodo({
+            ...todoToUpdate,
+            username
+          });
+        }
+      } catch (error) {
+        console.error("Failed to update todo description in Supabase:", error);
+      }
+    }
   };
 
   const updatePriority = (id: string, priority: string) => {
-    setTodos(
-      todos.map((todo) => (todo.id === id ? { ...todo, priority } : todo)),
-    );
+    const updatedTodos = todos.map((todo) => (todo.id === id ? { ...todo, priority } : todo));
+    setTodos(updatedTodos);
+    
+    // Update in Supabase if using cloud storage
+    if (thisUser && storageType === "cloud") {
+      try {
+        const username = sanitizedUsername(thisUser.user_metadata.full_name || thisUser.email?.split('@')[0] || 'user');
+        const todoToUpdate = updatedTodos.find(todo => todo.id === id);
+        if (todoToUpdate) {
+          todoService.updateTodo({
+            ...todoToUpdate,
+            username
+          });
+        }
+      } catch (error) {
+        console.error("Failed to update todo priority in Supabase:", error);
+      }
+    }
   };
 
   const openEtaDialog = (id: string) => {
@@ -215,13 +395,30 @@ export function Todo() {
 
   const updateEta = (date: Date) => {
     if (!selectedTodoId) return;
-    setTodos(
-      todos.map((todo) =>
-        todo.id === selectedTodoId
-          ? { ...todo, createdAt: date.getTime() }
-          : todo,
-      ),
+    
+    const updatedTodos = todos.map((todo) =>
+      todo.id === selectedTodoId
+        ? { ...todo, createdAt: date.getTime() }
+        : todo
     );
+    setTodos(updatedTodos);
+    
+    // Update in Supabase if using cloud storage
+    if (thisUser && storageType === "cloud") {
+      try {
+        const username = sanitizedUsername(thisUser.user_metadata.full_name || thisUser.email?.split('@')[0] || 'user');
+        const todoToUpdate = updatedTodos.find(todo => todo.id === selectedTodoId);
+        if (todoToUpdate) {
+          todoService.updateTodo({
+            ...todoToUpdate,
+            username
+          });
+        }
+      } catch (error) {
+        console.error("Failed to update todo ETA in Supabase:", error);
+      }
+    }
+    
     setEtaDialogOpen(false);
     setSelectedTodoId(null);
   };
