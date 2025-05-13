@@ -312,7 +312,7 @@ export function ShareDrawer() {
                     description: t("anyoneDesc"),
                   },
                 ].map(({ value, icon, label, description }) => (
-                  <div key={value} className="flex items-start space-x-2 mb-3">
+                  <div key={value} className="flex items-center space-x-2 mb-3">
                     <RadioGroupItem value={value} id={value} />
                     <Label
                       htmlFor={value}

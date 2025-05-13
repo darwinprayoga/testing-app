@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Check, Archive, RotateCcw, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +53,16 @@ export function TodoItemComponent({
   const [editValue, setEditValue] = useState<string>("");
   const [deletingId, setDeletingId] = useState<boolean>(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const descRef = useRef<HTMLTextAreaElement>(null);
+
+  // auto resize realtime
+  useEffect(() => {
+    autoResizeTextarea(textareaRef.current);
+  }, [editValue]);
+
+  useEffect(() => {
+    autoResizeTextarea(descRef.current);
+  }, [todo.description]);
 
   // Start editing a field
   const startEditing = (field: "text" | "priority", value: string) => {
@@ -193,6 +203,7 @@ export function TodoItemComponent({
             placeholder={t("addDescription")}
             className="text-xs text-muted-foreground px-1 py-0.5 bg-transparent border-none focus:outline-none focus:ring-0 w-full resize-none overflow-hidden min-h-[20px]"
             rows={1}
+            ref={descRef}
           />
         </div>
       </td>

@@ -1,0 +1,245 @@
+{
+  "appLanguage": "en",
+  "appFont": {
+    "name": "Source Sans Pro",
+    "value": "'Source Sans Pro', sans-serif"
+  },
+  "pwaDrawerOpen": false,
+  "shareDrawerOpen": false,
+  "userProfile": {
+    "username": "darwinprayoga",
+    "email": "darwin.prayoga13@gmail.com",
+    "image": "https://lh3.googleusercontent.com/a/ACg8ocL85h3nslukeHd9JHLcgW2mMNuMO2iOzJnO2TLQsqewJDQTIOPt=s96-c",
+    "isLoggedIn": true,
+    "hasPremium": false
+  },
+  "customThemes": [
+    {
+      "name": "vibrant wave",
+      "background": "#ffffff",
+      "main": "#ff8be8",
+      "mainHover": "#cc6fba",
+      "text": "#333333",
+      "subtext": "#666666",
+      "border": "#e5e7eb",
+      "card": "#f9fafb",
+      "accent": "#ff8be8",
+      "isCustom": true
+    },
+    {
+      "name": "vibrant dawn",
+      "background": "#ffffff",
+      "main": "#67eaf7",
+      "mainHover": "#52bbc6",
+      "text": "#333333",
+      "subtext": "#666666",
+      "border": "#e5e7eb",
+      "card": "#f9fafb",
+      "accent": "#67eaf7",
+      "isCustom": true
+    }
+  ],
+  "currentTheme": {
+    "name": "dark",
+    "background": "#1e1e2e",
+    "main": "#cba6f7",
+    "mainHover": "#b48eff",
+    "text": "#cdd6f4",
+    "subtext": "#a6adc8",
+    "border": "#313244",
+    "card": "#181825",
+    "accent": "#cba6f7"
+  },
+  "themeMode": "dark",
+  "favorites": ["prayoga.io", "dark"],
+  "appFontSize": {
+    "name": "Small",
+    "value": "sm",
+    "size": 14
+  },
+  "favoriteFonts": ["Poppins", "Montserrat"],
+  "userActivities": [
+    {
+      "type": "tab_selected",
+      "timestamp": 1747146823312,
+      "details": { "tabId": "fonts" }
+    },
+    {
+      "type": "tab_selected",
+      "timestamp": 1747146821145,
+      "details": { "tabId": "themes" }
+    },
+    {
+      "type": "search_performed",
+      "timestamp": 1747146818254,
+      "details": { "searchQuery": "pop" }
+    },
+    {
+      "type": "search_performed",
+      "timestamp": 1747146818064,
+      "details": { "searchQuery": "po" }
+    },
+    {
+      "type": "search_performed",
+      "timestamp": 1747146817937,
+      "details": { "searchQuery": "p" }
+    },
+    {
+      "type": "tab_selected",
+      "timestamp": 1747146811945,
+      "details": { "tabId": "fonts" }
+    },
+    {
+      "type": "tab_selected",
+      "timestamp": 1747146809263,
+      "details": { "tabId": "language" }
+    },
+    {
+      "type": "font_size_changed",
+      "timestamp": 1747146802802,
+      "details": { "fontSize": 14 }
+    },
+    {
+      "type": "tab_selected",
+      "timestamp": 1747146801028,
+      "details": { "tabId": "fonts" }
+    },
+    {
+      "type": "tab_selected",
+      "timestamp": 1747146574527,
+      "details": { "tabId": "clipboard" }
+    },
+    {
+      "type": "tab_selected",
+      "timestamp": 1747146573863,
+      "details": { "tabId": "todo" }
+    },
+    {
+      "type": "tab_selected",
+      "timestamp": 1747146506478,
+      "details": { "tabId": "clipboard" }
+    },
+    {
+      "type": "tab_selected",
+      "timestamp": 1747146505264,
+      "details": { "tabId": "todo" }
+    },
+    {
+      "type": "tab_selected",
+      "timestamp": 1747146453668,
+      "details": { "tabId": "clipboard" }
+    },
+    {
+      "type": "tab_selected",
+      "timestamp": 1747146393183,
+      "details": { "tabId": "todo" }
+    },
+    {
+      "type": "share_access",
+      "timestamp": 1747146255870,
+      "details": { "shareAccess": "restricted" }
+    },
+    {
+      "type": "share_access",
+      "timestamp": 1747146255068,
+      "details": { "shareAccess": "anyone" }
+    },
+    {
+      "type": "shared_users",
+      "timestamp": 1747146253419,
+      "details": {
+        "sharedUsers": [
+          {
+            "id": "2",
+            "name": "Jane Smith",
+            "email": "jane.smith@example.com",
+            "access": "viewer"
+          }
+        ]
+      }
+    },
+    {
+      "type": "share_access",
+      "timestamp": 1747146247295,
+      "details": { "shareAccess": "restricted" }
+    },
+    {
+      "type": "share_access",
+      "timestamp": 1747146246337,
+      "details": { "shareAccess": "anyone" }
+    },
+    {
+      "type": "tab_selected",
+      "timestamp": 1747146241415,
+      "details": { "tabId": "data" }
+    },
+    {
+      "type": "tab_selected",
+      "timestamp": 1747146237192,
+      "details": { "tabId": "data" }
+    }
+  ],
+  "settingsSearchQuery": "test",
+  "todoIsAdding": false,
+  "clipboardHistory": [
+    {
+      "id": "1747146950281",
+      "content": "dummy testing the storage",
+      "timestamp": 1747146950281,
+      "type": "text"
+    },
+    {
+      "id": "1747146941281",
+      "content": "http://localhost:3000/",
+      "timestamp": 1747146941281,
+      "type": "text"
+    }
+  ],
+  "todos": [
+    {
+      "id": "1",
+      "text": "Train for a marathon",
+      "description": "Netflix marathon, that is",
+      "completed": true,
+      "archived": true,
+      "priority": "4",
+      "createdAt": 1747059993224
+    },
+    {
+      "id": "2",
+      "text": "Find out who let the dogs out",
+      "description": "This mystery has gone unsolved since 2000",
+      "completed": true,
+      "archived": true,
+      "priority": "1",
+      "createdAt": 1747103193224
+    },
+    {
+      "id": "3",
+      "text": "Teach my cat to respond to 'pspsps'",
+      "description": "Day 47: Still ignores me completely",
+      "completed": false,
+      "archived": true,
+      "priority": "2",
+      "createdAt": 1747117593224
+    },
+    {
+      "id": "4",
+      "text": "Invent a time machine",
+      "description": "Just to go back and uninvent alarm clocks",
+      "completed": false,
+      "archived": true,
+      "priority": "3",
+      "createdAt": 1747124793224
+    },
+    {
+      "id": "5",
+      "text": "testing",
+      "description": "1. test\n2. test",
+      "completed": false,
+      "archived": false,
+      "priority": "-",
+      "createdAt": null
+    }
+  ]
+}

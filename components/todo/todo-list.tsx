@@ -1,6 +1,5 @@
 "use client";
 
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLanguage } from "@/contexts/language-context";
 import type { TodoItem } from "@/types/todo";
 import { TodoItemComponent } from "./todo-item";
