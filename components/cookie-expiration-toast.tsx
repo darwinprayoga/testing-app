@@ -4,9 +4,10 @@ import { useEffect, useRef } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/language-context";
-import { localUtils, useStorage } from "@/contexts/storage-context";
+import { useStorage } from "@/contexts/storage-context";
 import { formatDistanceToNow } from "date-fns";
 import { useActivity } from "@/contexts/activity-context";
+import { localUtils } from "@/utils/storage-utils";
 
 export function CookieExpirationToast() {
   const { toast, dismiss } = useToast();
@@ -19,7 +20,7 @@ export function CookieExpirationToast() {
   const getExpirationTime = (): string => {
     try {
       const rawExpiry = localUtils.get("dataStorageExpires");
-
+      console.log(rawExpiry);
       return formatDistanceToNow(rawExpiry, { addSuffix: false });
     } catch (error) {
       console.error("Failed to read cookie expiration:", error);

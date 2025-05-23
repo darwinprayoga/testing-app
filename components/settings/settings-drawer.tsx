@@ -20,6 +20,8 @@ import { useStorage } from "@/contexts/storage-context";
 import { ThemeTab } from "./theme-tab";
 import { FontTab } from "./font-tab";
 import { LanguageTab } from "./language-tab";
+import { cloudUtils } from "@/utils/storage-utils";
+import { useAuth } from "@/contexts/auth-context";
 
 export function SettingsDrawer() {
   const [open, setOpen] = useState(false);
@@ -30,24 +32,71 @@ export function SettingsDrawer() {
   const { getItem, setItem, isStorageReady } = useStorage();
   const { t } = useLanguage();
   const { recordActivity, getLastActivity } = useActivity();
+  const { thisUser, isCloud } = useAuth();
 
-  // Restore drawer open state
+  // Define allowed keys for shared setting logic
+  type SettingKey = "settingsDrawerOpen";
+
+  // Load a setting from cloud/local
+  const loadSetting = async (key: SettingKey, setter: (val: any) => void) => {
+    try {
+      if (thisUser && isCloud) {
+        const [settings] = await Promise.all([
+          cloudUtils.get("settings", thisUser.id),
+        ]);
+        const value = settings?.[0]?.[key];
+        if (value !== undefined) setter(value);
+      } else {
+        if (!isStorageReady) return;
+        const value = await getItem(key);
+        if (value !== undefined) setter(value);
+      }
+    } catch (error) {
+      console.error(`Failed to load setting "${key}":`, error);
+    }
+  };
+
+  // Save a setting to cloud/local
+  const updateSetting = async (
+    key: SettingKey,
+    value: any,
+    setter: (val: any) => void,
+  ) => {
+    try {
+      if (thisUser && isCloud) {
+        await cloudUtils.set(
+          "settings",
+          { uid: thisUser.id, [key]: value },
+          thisUser.id,
+        );
+      }
+      setter(value);
+    } catch (error) {
+      console.error(`Failed to update setting "${key}":`, error);
+    }
+  };
+
+  // Keys and setters for loading on mount
+  const settingLoaders: Record<SettingKey, (val: any) => void> = {
+    settingsDrawerOpen: setOpen,
+  };
+
+  // Load settings (activeTab + settingsDrawerOpen)
   useEffect(() => {
+    Object.entries(settingLoaders).forEach(([key, setter]) => {
+      loadSetting(key as SettingKey, setter);
+    });
+  }, [isStorageReady, getItem, thisUser, isCloud]);
+
+  // Update the handleDrawerChange function:
+  const handleDrawerChange = (value: boolean) => {
+    updateSetting("settingsDrawerOpen", value, setOpen);
+
     if (!isStorageReady) return;
+    setItem("settingsDrawerOpen", value);
+  };
 
-    getItem("settingsDrawerOpen")
-      .then((saved) => {
-        if (saved) setOpen(saved);
-      })
-      .catch((err) => console.error("Error loading drawer state:", err));
-  }, [isStorageReady, getItem]);
-
-  // Persist drawer state
-  useEffect(() => {
-    if (isStorageReady) setItem("settingsDrawerOpen", open);
-  }, [open, isStorageReady, setItem]);
-
-  // Restore tab & search query
+  // Restore last known session activity (not persisted via settings)
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
@@ -60,11 +109,6 @@ export function SettingsDrawer() {
       setActiveTab(lastTab);
     if (lastSearch) setSearchQuery(lastSearch);
   }, [getLastActivity]);
-
-  // Persist search query
-  useEffect(() => {
-    if (isStorageReady) setItem("settingsSearchQuery", searchQuery);
-  }, [searchQuery, isStorageReady, setItem]);
 
   const handleTabChange = useCallback(
     (tabId: string) => {
@@ -84,11 +128,11 @@ export function SettingsDrawer() {
   );
 
   const handleClose = useCallback(() => {
-    setOpen(false);
+    handleDrawerChange(false);
   }, []);
 
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
+    <Drawer open={open} onOpenChange={handleDrawerChange}>
       <DrawerTrigger asChild>
         <Button variant="ghost" size="icon" className="text-primary">
           <Settings className="h-5 w-5" />

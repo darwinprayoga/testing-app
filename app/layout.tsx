@@ -11,6 +11,7 @@ import { StorageProvider } from "@/contexts/storage-context";
 import { Toaster } from "@/components/toaster";
 import { AuthProvider } from "@/contexts/auth-context";
 import { CleanupHash } from "@/components/cleanup-hash";
+import { AutoRegister } from "@/components/auto-register";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -57,19 +58,20 @@ export default function RootLayout({
           enableSystem
         >
           <StorageProvider>
-            <ActivityProvider>
-              <ThemeProvider>
-                <FontProvider>
-                  <LanguageProvider>
-                    <AuthProvider>
+            <AuthProvider>
+              <ActivityProvider>
+                <ThemeProvider>
+                  <FontProvider>
+                    <LanguageProvider>
                       <CleanupHash />
+                      <AutoRegister />
                       {children}
-                    </AuthProvider>
-                    <Toaster />
-                  </LanguageProvider>
-                </FontProvider>
-              </ThemeProvider>
-            </ActivityProvider>
+                      <Toaster />
+                    </LanguageProvider>
+                  </FontProvider>
+                </ThemeProvider>
+              </ActivityProvider>
+            </AuthProvider>
           </StorageProvider>
         </NextThemesProvider>
       </body>

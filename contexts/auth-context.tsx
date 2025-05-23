@@ -1,48 +1,47 @@
 "use client";
 
 import type React from "react";
-
 import { createContext, useContext, useEffect, useState } from "react";
 
 import type { User, Session } from "@supabase/supabase-js";
 import { useToast } from "@/components/ui/use-toast";
-import { useLanguage } from "./language-context";
 import { supabase } from "@/utils/supabase/client";
+import { cloudUtils } from "@/utils/storage-utils";
+import { useStorage } from "./storage-context";
 
+// Define the shape of the authentication context
 type AuthContextType = {
   thisUser: User | null;
   session: Session | null;
   isLoading: boolean;
+  isCloud: boolean;
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
 };
 
-// Export the AuthContext so it can be imported directly
+// Create the AuthContext with undefined as default
 export const AuthContext = createContext<AuthContextType | undefined>(
   undefined,
 );
 
+// AuthProvider component to wrap the app with authentication logic
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [thisUser, setThisUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCloud, setIsCloud] = useState(false);
+
   const client = supabase;
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { setStorageType } = useStorage();
 
-  // Check if Supabase is properly coŹfigured
+  // Check if Supabase credentials are properly configured
   const isSupabaseConfigured =
-    !!(
-      process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_URL !== ""
-    ) &&
-    !!(
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY !== ""
-    );
+    !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+  // Effect to handle authentication state and session initialization
   useEffect(() => {
-    // auth provider
     if (!isSupabaseConfigured) {
       console.warn(
         "Supabase is not configured. Auth features will be disabled.",
@@ -58,11 +57,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: { session },
           error,
         } = await client.auth.getSession();
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
+
         setSession(session);
         setThisUser(session?.user ?? null);
+        localStorage.setItem("uid", `${session?.user.id}`);
       } catch (error) {
         console.error("Error getting session:", error);
       } finally {
@@ -72,18 +71,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     getSession();
 
+    // Listen to auth state changes
     const {
       data: { subscription },
-    } = client.auth.onAuthStateChange((_event: any, session: any) => {
+    } = client.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setThisUser(session?.user ?? null);
     });
 
+    // Clean up subscription on unmount
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase, isSupabaseConfigured]);
+  }, [client, isSupabaseConfigured]);
 
+  // Effect to check for cloud features (e.g., premium users)
+  useEffect(() => {
+    if (session && thisUser) {
+      const init = async () => {
+        const data = await cloudUtils.get("userProfile", thisUser.id);
+        if (data[0].datas.hasPremium) {
+          setIsCloud(true);
+        }
+      };
+      init();
+    }
+  }, [session, thisUser]);
+
+  // Sign out user
   const signOut = async () => {
     if (!isSupabaseConfigured) {
       toast({
@@ -97,20 +112,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const { error } = await client.auth.signOut();
-      if (error) {
-        throw error;
-      }
-      location.reload();
+      if (error) throw error;
+      location.reload(); // Refresh the app after sign-out
     } catch (error: any) {
-      toast({
-        title: t("signOutFailed"),
-        description: error.message || t("signOutFailedDesc"),
-        variant: "destructive",
-      });
       throw error;
     }
   };
 
+  // Sign in with Google using popup (not redirect)
   const signInWithGoogle = async () => {
     if (!isSupabaseConfigured) {
       toast({
@@ -123,33 +132,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      // Use popup for Google sign-in instead of redirect
-      const { data, error } = await client.auth.signInWithOAuth({
+      const { error } = await client.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${location.href}/auth/callback`,
         },
       });
 
-      if (error) {
-        throw error;
-      }
+      setStorageType("localStorage");
+
+      if (error) throw error;
     } catch (error: any) {
-      toast({
-        title: t("signInFailed"),
-        description: error.message || t("signInFailedDesc"),
-        variant: "destructive",
-      });
       throw error;
     }
   };
 
+  // Provide the auth context to children
   return (
     <AuthContext.Provider
       value={{
         thisUser,
         session,
         isLoading,
+        isCloud,
         signOut,
         signInWithGoogle,
       }}
@@ -159,6 +164,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Custom hook to access AuthContext
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {

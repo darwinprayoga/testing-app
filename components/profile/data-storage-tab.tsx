@@ -9,9 +9,7 @@ import { Cloud, Cookie, HardDrive, Info, Clock } from "lucide-react";
 import type { DataStorageTabProps } from "./types";
 
 export function DataStorageTab({
-  user,
   storageType,
-  handleDataStorageChange,
   openResetDialog,
   getCookieExpirationText,
 }: DataStorageTabProps) {
@@ -39,13 +37,19 @@ export function DataStorageTab({
         </p>
       </div>
 
-      <RadioGroup value={storageType} onValueChange={handleDataStorageChange}>
+      <RadioGroup value={storageType}>
         <div className="flex items-start space-x-2 mb-4">
-          <RadioGroupItem value="cookies" id="cookies" />
+          <RadioGroupItem
+            value="cookies"
+            id="cookies"
+            disabled={storageType !== "cookies"}
+          />
           <div className="grid gap-1.5">
             <Label
               htmlFor="cookies"
-              className="font-medium flex items-center gap-2"
+              className={`font-medium flex items-center gap-2 ${
+                storageType !== "cookies" ? "text-muted-foreground" : ""
+              }`}
             >
               <Cookie className="h-4 w-4" />
               {t("cookiesStorage")}
@@ -63,13 +67,13 @@ export function DataStorageTab({
           <RadioGroupItem
             value="localStorage"
             id="localStorage"
-            disabled={!user.isLoggedIn}
+            disabled={storageType !== "localStorage"}
           />
           <div className="grid gap-1.5">
             <Label
               htmlFor="localStorage"
               className={`font-medium flex items-center gap-2 ${
-                !user.isLoggedIn ? "text-muted-foreground" : ""
+                storageType !== "localStorage" ? "text-muted-foreground" : ""
               }`}
             >
               <HardDrive className="h-4 w-4" />
@@ -88,15 +92,13 @@ export function DataStorageTab({
           <RadioGroupItem
             value="cloud"
             id="cloud"
-            disabled={!user.isLoggedIn || !user.hasPremium}
+            disabled={storageType !== "cloud"}
           />
           <div className="grid gap-1.5">
             <Label
               htmlFor="cloud"
               className={`font-medium flex items-center gap-2 ${
-                !user.isLoggedIn || !user.hasPremium
-                  ? "text-muted-foreground"
-                  : ""
+                storageType !== "cloud" ? "text-muted-foreground" : ""
               }`}
             >
               <Cloud className="h-4 w-4" />
@@ -120,9 +122,11 @@ export function DataStorageTab({
               {t("resetAllDataDesc")}
             </p>
           </div>
-          <Button variant="destructive" size="sm" onClick={openResetDialog}>
-            {t("resetNow")}
-          </Button>
+          {storageType !== "cloud" && (
+            <Button variant="destructive" size="sm" onClick={openResetDialog}>
+              {t("resetNow")}
+            </Button>
+          )}
         </div>
       </div>
 

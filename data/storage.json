@@ -8,6 +8,7 @@
   "shareDrawerOpen": false,
   "userProfile": {
     "username": "darwinprayoga",
+    "uid": "1d61735a-639a-496e-aa76-78955d84b24b",
     "email": "darwin.prayoga13@gmail.com",
     "image": "https://lh3.googleusercontent.com/a/ACg8ocL85h3nslukeHd9JHLcgW2mMNuMO2iOzJnO2TLQsqewJDQTIOPt=s96-c",
     "isLoggedIn": true,
@@ -181,6 +182,7 @@
   ],
   "settingsSearchQuery": "test",
   "todoIsAdding": false,
+  "todoActiveTab": "active",
   "clipboardHistory": [
     {
       "id": "1747146950281",
@@ -195,6 +197,7 @@
       "type": "text"
     }
   ],
+  "clipboardText": "Lorem ipsum...",
   "todos": [
     {
       "id": "1",

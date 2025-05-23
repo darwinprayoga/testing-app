@@ -1,8 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { Clipboard } from "@/components/clipboard/clipboard";
-import { Todo } from "@/components/todo/todo";
+import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProfileDrawer } from "@/components/profile/profile-drawer";
 import { PwaDrawer } from "@/components/pwa-drawer";
@@ -11,66 +9,89 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { ClipboardIcon, ListTodo } from "lucide-react";
 import { SettingsDrawer } from "@/components/settings/settings-drawer";
 import { useLanguage } from "@/contexts/language-context";
-import { useActivity } from "@/contexts/activity-context";
 import Image from "next/image";
 import { InfoDrawer } from "@/components/info-drawer";
 import { LoadingScreen } from "@/components/loading-screen";
 import { useStorage } from "@/contexts/storage-context";
 import { CookieExpirationToast } from "@/components/cookie-expiration-toast";
+import dynamic from "next/dynamic";
+import { cloudUtils } from "@/utils/storage-utils";
+import { useAuth } from "@/contexts/auth-context";
+
+const Clipboard = dynamic(() => import("@/components/clipboard/clipboard"), {
+  ssr: false, // Optional: disables SSR
+});
+
+const Todo = dynamic(() => import("@/components/todo/todo"), {
+  ssr: false, // Optional: disables SSR
+});
 
 export default function Home() {
   const { getItem, setItem, isStorageReady } = useStorage();
   const [activeTab, setActiveTab] = useState<string>("clipboard");
   const [infoDrawerOpen, setInfoDrawerOpen] = useState(false);
-
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const { t } = useLanguage();
-  const { recordActivity, getLastActivity } = useActivity();
+  const { thisUser, isCloud } = useAuth();
 
-  // Load active tab from storage
-  useEffect(() => {
-    const loadTab = async () => {
-      if (isStorageReady) {
-        const savedTab = await getItem("activeTab");
-        if (savedTab) {
-          setActiveTab(savedTab);
-        }
+  type SettingKey = "activeTab" | "infoDrawerOpen";
+
+  const loadSetting = async (key: SettingKey, setter: (val: any) => void) => {
+    try {
+      if (thisUser && isCloud) {
+        const [settings] = await Promise.all([
+          cloudUtils.get("settings", thisUser.id),
+        ]);
+        const value = settings?.[0]?.[key];
+        if (value !== undefined) setter(value);
+      } else {
+        if (!isStorageReady) return;
+        const value = await getItem(key);
+        if (value !== undefined) setter(value);
       }
-    };
-    loadTab();
-  }, [isStorageReady, getItem]);
-
-  // Save activeTab to storage whenever it changes
-  useEffect(() => {
-    if (isStorageReady) {
-      setItem("activeTab", activeTab);
+    } catch (error) {
+      console.error(`Failed to load setting "${key}":`, error);
     }
-  }, [activeTab, isStorageReady, setItem]);
+  };
 
-  // Load info drawer state from storage
-  useEffect(() => {
-    const loadDrawer = async () => {
-      if (isStorageReady) {
-        const savedState = await getItem("infoDrawerOpen");
-        if (savedState) {
-          setInfoDrawerOpen(savedState);
-        }
+  const updateSetting = async (
+    key: SettingKey,
+    value: any,
+    setter: (val: any) => void,
+  ) => {
+    try {
+      if (thisUser && isCloud) {
+        await cloudUtils.set(
+          "settings",
+          { uid: thisUser.id, [key]: value },
+          thisUser.id,
+        );
       }
-    };
-    loadDrawer();
-  }, [isStorageReady, getItem]);
-
-  // Save info drawer state to storage
-  useEffect(() => {
-    if (isStorageReady) {
-      setItem("infoDrawerOpen", infoDrawerOpen);
+      setter(value);
+    } catch (error) {
+      console.error(`Failed to update setting "${key}":`, error);
     }
-  }, [infoDrawerOpen, isStorageReady, setItem]);
+  };
+
+  // Keys and their setters for loading
+  const settingLoaders: Record<SettingKey, (val: any) => void> = {
+    activeTab: (val) => setActiveTab(val ?? "clipboard"),
+    infoDrawerOpen: setInfoDrawerOpen,
+  };
+
+  // Load settings on mount or dependency change
+  useEffect(() => {
+    Object.entries(settingLoaders).forEach(([key, setter]) => {
+      loadSetting(key as SettingKey, setter);
+    });
+  }, [isStorageReady, getItem, thisUser, isCloud]);
+
+  // Save infoDrawerOpen on change
+  useEffect(() => {
+    updateSetting("infoDrawerOpen", infoDrawerOpen, setInfoDrawerOpen);
+  }, [infoDrawerOpen, isStorageReady]);
 
   const [isLoading, setIsLoading] = useState(true);
-
-  // Add a ref to track initialization
-  const initializedRef = useRef(false);
 
   // Show loading screen on initial load
   useEffect(() => {
@@ -82,32 +103,12 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Restore user context on mount
-  useEffect(() => {
-    // Only run once on mount
-    if (!initializedRef.current && isStorageReady) {
-      initializedRef.current = true;
-
-      // Check if there's a previous activity to restore
-      const lastTabActivity = getLastActivity("tab_selected");
-
-      if (lastTabActivity && lastTabActivity.details?.tabId) {
-        // Only restore if it's a main tab (clipboard or todo)
-        const tabId = lastTabActivity.details.tabId;
-        if (tabId === "clipboard" || tabId === "todo") {
-          setActiveTab(tabId);
-        }
-      }
-    }
-  }, [getLastActivity, isStorageReady]);
-
   // Update the handleTabChange function:
   const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    if (isStorageReady) {
-      setItem("activeTab", value);
-    }
-    recordActivity("tab_selected", { tabId: value });
+    updateSetting("activeTab", value, setActiveTab);
+
+    if (!isStorageReady) return;
+    setItem("activeTab", value);
   };
 
   if (!isStorageReady) {
@@ -127,7 +128,9 @@ export default function Home() {
       <div className="w-full max-w-2xl flex justify-between items-center mb-6">
         <div
           className="flex items-center gap-2 cursor-pointer group"
-          onClick={() => setInfoDrawerOpen(true)}
+          onClick={() =>
+            updateSetting("infoDrawerOpen", true, setInfoDrawerOpen)
+          }
         >
           <Image
             src="/logo.svg"

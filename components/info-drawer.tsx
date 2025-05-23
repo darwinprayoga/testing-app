@@ -40,9 +40,8 @@ export function InfoDrawer({ open, onOpenChange }: InfoDrawerProps) {
 
   // Save drawer state to storage when it changes
   useEffect(() => {
-    if (isStorageReady) {
-      setItem("infoDrawerOpen", open);
-    }
+    if (!isStorageReady) return;
+    setItem("infoDrawerOpen", open);
   }, [open, setItem, isStorageReady]);
 
   const whatsappMessage = encodeURIComponent(

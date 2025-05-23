@@ -11,17 +11,14 @@ import {
 } from "react";
 import { useActivity } from "./activity-context";
 import { useStorage } from "@/contexts/storage-context";
-
-type FontFamily = {
-  name: string;
-  value: string;
-};
-
-type FontSize = {
-  name: string;
-  value: string;
-  size: number;
-};
+import { useAuth } from "./auth-context";
+import { cloudUtils } from "@/utils/storage-utils";
+import {
+  availableFonts,
+  availableSizes,
+  FontFamily,
+  FontSize,
+} from "@/data/fonts";
 
 type FontContextType = {
   currentFont: FontFamily;
@@ -34,29 +31,16 @@ type FontContextType = {
   availableSizes: FontSize[];
 };
 
-const availableFonts: FontFamily[] = [
-  { name: "Source Sans Pro", value: "'Source Sans Pro', sans-serif" },
-  { name: "Poppins", value: "'Poppins', sans-serif" },
-  { name: "Montserrat", value: "'Montserrat', sans-serif" },
-  { name: "Inter", value: "'Inter', sans-serif" },
-  { name: "Roboto", value: "'Roboto', sans-serif" },
-  { name: "Open Sans", value: "'Open Sans', sans-serif" },
-  { name: "Lato", value: "'Lato', sans-serif" },
-  { name: "Raleway", value: "'Raleway', sans-serif" },
-  { name: "Ubuntu", value: "'Ubuntu', sans-serif" },
-  { name: "Playfair Display", value: "'Playfair Display', serif" },
-  { name: "Merriweather", value: "'Merriweather', serif" },
-  { name: "Nunito", value: "'Nunito', sans-serif" },
-];
+type SettingKey = "appFont";
+type FavoriteKey = "favoriteFont";
 
-const availableSizes: FontSize[] = [
-  { name: "Extra Small", value: "xs", size: 12 },
-  { name: "Small", value: "sm", size: 14 },
-  { name: "Medium", value: "md", size: 16 },
-  { name: "Large", value: "lg", size: 18 },
-  { name: "Extra Large", value: "xl", size: 20 },
-  { name: "2XL", value: "2xl", size: 24 },
-];
+type LoadKey = SettingKey | FavoriteKey;
+type SourceType = "settings" | "userFavorites";
+
+interface LoadConfig {
+  source: SourceType;
+  isSetting: boolean;
+}
 
 const FontContext = createContext<FontContextType | undefined>(undefined);
 
@@ -66,27 +50,73 @@ export function FontProvider({ children }: { children: React.ReactNode }) {
   const [fontSize, setCurrentFontSize] = useState<FontSize>(availableSizes[2]);
   const { recordActivity } = useActivity();
   const { getItem, setItem, isStorageReady } = useStorage();
-
+  const { thisUser, isCloud } = useAuth();
   const fontSizeRef = useRef<number | null>(null);
+
+  const keySourceMap: Record<LoadKey, LoadConfig> = {
+    appFont: { source: "settings", isSetting: true },
+    favoriteFont: { source: "userFavorites", isSetting: false },
+  };
+
+  const genericLoad = async (key: LoadKey, setter: (val: any) => void) => {
+    const { source } = keySourceMap[key];
+
+    try {
+      if (thisUser && isCloud) {
+        const [data] = await Promise.all([cloudUtils.get(source, thisUser.id)]);
+        const value = data?.[0]?.[key];
+        if (value !== undefined) setter(value);
+      } else {
+        if (!isStorageReady) return;
+        const value = await getItem(key);
+        if (value !== undefined) setter(value);
+      }
+    } catch (error) {
+      console.error(`Failed to load ${source} key "${key}":`, error);
+    }
+  };
+
+  const genericUpdate = async (
+    key: LoadKey,
+    value: any,
+    setter: (val: any) => void,
+  ) => {
+    const { source } = keySourceMap[key];
+
+    try {
+      if (thisUser && isCloud) {
+        await cloudUtils.set(
+          source,
+          { uid: thisUser.id, [key]: value },
+          thisUser.id,
+        );
+      }
+      setter(value);
+    } catch (error) {
+      console.error(`Failed to update ${source} key "${key}":`, error);
+    }
+  };
+
+  const initialLoaders: Record<LoadKey, (val: any) => void> = {
+    appFont: (val) => setCurrentFont(val ?? availableFonts[0]),
+    favoriteFont: (val) => setFavorites(val ?? []),
+  };
+
+  useEffect(() => {
+    Object.entries(initialLoaders).forEach(([key, setter]) => {
+      genericLoad(key as LoadKey, setter);
+    });
+  }, [isStorageReady, getItem, thisUser, isCloud]);
 
   useEffect(() => {
     const loadPreferencesFromStorage = async () => {
       if (!isStorageReady) return;
 
       try {
-        const [savedFont, savedFavorites, savedFontSize] = await Promise.all([
-          getItem("appFont"),
+        const [savedFavorites, savedFontSize] = await Promise.all([
           getItem("favoriteFonts"),
           getItem("appFontSize"),
         ]);
-
-        if (
-          savedFont &&
-          typeof savedFont.name === "string" &&
-          typeof savedFont.value === "string"
-        ) {
-          setCurrentFont(savedFont);
-        }
 
         if (Array.isArray(savedFavorites)) {
           setFavorites(savedFavorites);
@@ -165,6 +195,7 @@ export function FontProvider({ children }: { children: React.ReactNode }) {
 
   const setFont = (font: FontFamily) => {
     setCurrentFont(font);
+    genericUpdate("appFont", font, setCurrentFont);
     recordActivity("font_changed", { fontName: font.name });
   };
 
@@ -176,9 +207,11 @@ export function FontProvider({ children }: { children: React.ReactNode }) {
   };
 
   const toggleFavorite = (name: string) => {
-    setFavorites((prev) =>
-      prev.includes(name) ? prev.filter((f) => f !== name) : [...prev, name],
-    );
+    const updatedFavorites = favorites.includes(name)
+      ? favorites.filter((item) => item !== name)
+      : [...favorites, name];
+    // Persist to storage
+    genericUpdate("favoriteFont", updatedFavorites, setFavorites);
   };
 
   const contextValue = useMemo(

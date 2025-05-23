@@ -193,6 +193,10 @@
     "popupBlocked": "The pop up is blocked",
     "enablePopups": "Enable the pop up to continue",
     "updateProfileFailed": "Update profile failed",
-    "updateProfileFailedDesc": "There was an error updating your profile"
+    "updateProfileFailedDesc": "There was an error updating your profile",
+    "usernameAlreadyTaken": "Username is already taken.",
+    "usernameCheckFailed": "Failed to check username. Please try again.",
+    "error": "Error",
+    "somethingWentWrong": "Something went wrong. Please try again later."
   }
 }

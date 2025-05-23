@@ -4,6 +4,8 @@ import type React from "react";
 import { createContext, useContext, useEffect, useState } from "react";
 import { LANGUAGES, type TranslationKey } from "@/translations";
 import { useStorage } from "@/contexts/storage-context";
+import { useAuth } from "./auth-context";
+import { cloudUtils } from "@/utils/storage-utils";
 
 // Type for our language context
 type LanguageContextType = {
@@ -18,39 +20,68 @@ const LanguageContext = createContext<LanguageContextType | undefined>(
 );
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [currentLanguage, setCurrentLanguage] = useState<string>("en");
-  const { getItem, setItem, isStorageReady } = useStorage();
+  const [currentLanguage, setCurrentLanguage] = useState<string>(
+    navigator.language.split("-")[0],
+  );
+  const { setItem, getItem, isStorageReady } = useStorage();
+  const { thisUser, isCloud } = useAuth();
 
-  useEffect(() => {
-    if (!isStorageReady) return;
+  // Define allowed keys for shared setting logic
+  type SettingKey = "appLanguage";
 
-    const loadLanguage = async () => {
-      try {
-        // Try to get saved language from storage
-        const savedLanguage = await getItem("appLanguage");
-        if (savedLanguage) {
-          setCurrentLanguage(savedLanguage);
-        } else {
-          // Detect browser language and set it if supported
-          const browserLang = navigator.language.split("-")[0]; // Get language code part only
-          const defaultLanguage = Object.keys(LANGUAGES).includes(browserLang)
-            ? browserLang
-            : "en";
-          setCurrentLanguage(defaultLanguage);
-        }
-      } catch (error) {
-        console.error("Error loading language preference:", error);
+  // Load a setting from cloud/local
+  const loadSetting = async (key: SettingKey, setter: (val: any) => void) => {
+    try {
+      if (thisUser && isCloud) {
+        const [settings] = await Promise.all([
+          cloudUtils.get("settings", thisUser.id),
+        ]);
+        const value = settings?.[0]?.[key];
+        if (value !== undefined) setter(value);
+      } else {
+        if (!isStorageReady) return;
+        const value = await getItem(key);
+        if (value !== undefined) setter(value);
       }
-    };
+    } catch (error) {
+      console.error(`Failed to load setting "${key}":`, error);
+    }
+  };
 
-    loadLanguage();
-  }, [isStorageReady, getItem]);
+  // Save a setting to cloud/local
+  const updateSetting = async (
+    key: SettingKey,
+    value: any,
+    setter: (val: any) => void,
+  ) => {
+    try {
+      if (thisUser && isCloud) {
+        await cloudUtils.set(
+          "settings",
+          { uid: thisUser.id, [key]: value },
+          thisUser.id,
+        );
+      } else {
+        setItem(key, value);
+      }
+      setter(value);
+    } catch (error) {
+      console.error(`Failed to update setting "${key}":`, error);
+    }
+  };
 
-  // Save language preference to storage whenever it changes
+  // Keys and setters for loading on mount
+  const settingLoaders: Record<SettingKey, (val: any) => void> = {
+    appLanguage: (val) =>
+      setCurrentLanguage(val ?? navigator.language.split("-")[0]),
+  };
+
+  // Load settings (activeTab + settingsDrawerOpen)
   useEffect(() => {
-    if (!isStorageReady) return;
-    setItem("appLanguage", currentLanguage);
-  }, [currentLanguage, isStorageReady, setItem]);
+    Object.entries(settingLoaders).forEach(([key, setter]) => {
+      loadSetting(key as SettingKey, setter);
+    });
+  }, [isStorageReady, getItem, thisUser, isCloud]);
 
   // Translation function
   const t = (key: TranslationKey): string => {
@@ -64,7 +95,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   // Set language function
   const setLanguage = (code: string) => {
     if (Object.keys(LANGUAGES).includes(code)) {
-      setCurrentLanguage(code);
+      updateSetting("appLanguage", code, setCurrentLanguage);
     }
   };
 

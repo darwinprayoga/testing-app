@@ -12,8 +12,11 @@ import { getRandomJokes } from "@/data/jokes";
 import { useDebouncedCallback } from "use-debounce";
 import { autoResizeTextarea } from "@/utils/todo-utils";
 import { useEffect, useRef, useState } from "react";
+import { cloudUtils } from "@/utils/storage-utils";
+import { useAuth } from "@/contexts/auth-context";
+import { v4 as uuidv4 } from "uuid";
 
-export function Todo() {
+export default function Todo() {
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [isAdding, setIsAdding] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>("active");
@@ -23,46 +26,95 @@ export function Todo() {
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const { t, currentLanguage } = useLanguage();
   const { getItem, setItem, isStorageReady } = useStorage();
+  const { thisUser, isCloud } = useAuth();
+
+  const sortTodos = (todos: any[]) =>
+    [...todos].sort((a, b) => {
+      if (a.priority !== b.priority) {
+        return a.priority - b.priority;
+      }
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
+
+  const initDatas = async (uid: string) => {
+    const savedIsAdding = await getItem("todoIsAdding");
+    const [todos, settings] = await Promise.all([
+      cloudUtils.get("todos", uid),
+      cloudUtils.get("settings", uid),
+    ]);
+
+    if (savedIsAdding) setIsAdding(savedIsAdding);
+    setTodos(sortTodos(todos));
+    const setting = settings[0];
+    setActiveTab(setting.todoActiveTab);
+  };
+
+  const updateSetting = async (
+    key: string,
+    value: any,
+    localSetter: (val: any) => void,
+  ) => {
+    if (thisUser && isCloud) {
+      await cloudUtils.set(
+        "settings",
+        {
+          uid: thisUser.id,
+          [key]: value,
+        },
+        thisUser.id,
+      );
+    }
+    localSetter(value);
+  };
+
+  const activeChange = async () => {
+    const value = activeTab === "active" ? "archived" : "active";
+    await updateSetting("todoActiveTab", value, setActiveTab);
+  };
 
   const persist = useDebouncedCallback((key: string, value: any) => {
     if (isStorageReady) setItem(key, value);
   }, 300);
 
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      persist.flush(); // force run pending persist
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [persist]);
-
-  useEffect(() => {
-    if (!isStorageReady) return;
-
-    const loadTodosFromStorage = async () => {
-      try {
-        const savedTodos = await getItem("todos");
-        if (Array.isArray(savedTodos)) {
-          setTodos(savedTodos);
-        } else {
-          loadDummyData();
-        }
-
-        const savedActiveTab = await getItem("todoActiveTab");
-        if (savedActiveTab) setActiveTab(savedActiveTab);
-
-        const savedIsAdding = await getItem("todoIsAdding");
-        if (savedIsAdding) setIsAdding(savedIsAdding);
-      } catch (error) {
-        console.error("Error during initialization:", error);
+  const loadTodosFromStorage = async () => {
+    try {
+      const savedTodos = await getItem("todos");
+      if (Array.isArray(savedTodos)) {
+        setTodos(savedTodos);
+      } else {
+        loadDummyData();
       }
-    };
 
-    loadTodosFromStorage();
-  }, [isStorageReady, currentLanguage, getItem]);
+      const savedActiveTab = await getItem("todoActiveTab");
+      if (savedActiveTab) setActiveTab(savedActiveTab);
+
+      const savedIsAdding = await getItem("todoIsAdding");
+      if (savedIsAdding) setIsAdding(savedIsAdding);
+    } catch (error) {
+      console.error("Error during initialization:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (thisUser && isCloud) {
+      initDatas(thisUser.id);
+
+      const subscription = cloudUtils.subscribe(
+        "todos",
+        thisUser.id,
+        async () => {
+          await initDatas(thisUser.id);
+        },
+      );
+
+      return () => {
+        cloudUtils.removeChannel(subscription);
+      };
+    } else {
+      if (!isStorageReady) return;
+      loadTodosFromStorage();
+    }
+  }, [isStorageReady, thisUser, isCloud]);
 
   const loadDummyData = async () => {
     const savedTodos = await getItem("todos");
@@ -97,7 +149,6 @@ export function Todo() {
 
   useEffect(() => {
     if (!isStorageReady) return;
-
     try {
       persist("todos", todos);
     } catch (error) {
@@ -131,7 +182,7 @@ export function Todo() {
     const oneHourOneMinuteLater = Date.now() + (60 + 60 * 60) * 1000;
 
     const newTodo: TodoItem = {
-      id: (todos.length + 1).toString(), // better than length-based ID
+      id: uuidv4(),
       text: text,
       description: "",
       completed: false,
@@ -142,7 +193,9 @@ export function Todo() {
 
     data = [...todos, newTodo];
 
-    if (Array.isArray(data)) {
+    if (thisUser && isCloud) {
+      await cloudUtils.set("todos", newTodo, thisUser.id);
+    } else {
       setTodos(data);
       setTimeout(() => {
         persist("todos", data);
@@ -153,54 +206,130 @@ export function Todo() {
     setNewTaskText("");
   };
 
-  const toggleComplete = (id: string) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo,
-      ),
-    );
+  const toggleComplete = async (id: string) => {
+    const targetTodo = todos.find((t) => t.id === id);
+    if (!targetTodo) return;
+
+    const updatedTodo = { ...targetTodo, completed: !targetTodo.completed };
+
+    // Sync change with storage
+    if (thisUser && isCloud) {
+      await cloudUtils.set("todos", updatedTodo, thisUser.id);
+    } else {
+      // Update UI state immediately
+      setTodos((prev) => prev.map((t) => (t.id === id ? updatedTodo : t)));
+    }
   };
 
-  const archiveTask = (id: string) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, archived: true } : todo,
-      ),
-    );
+  const archiveTask = async (id: string) => {
+    const targetTodo = todos.find((todo) => todo.id === id);
+    if (!targetTodo) return;
+
+    const updatedTodo = { ...targetTodo, archived: true };
+
+    // Sync change with storage
+    if (thisUser && isCloud) {
+      await cloudUtils.set("todos", updatedTodo, thisUser.id);
+    } else {
+      // Update UI state immediately
+      setTodos((prev) =>
+        prev.map((todo) => (todo.id === id ? updatedTodo : todo)),
+      );
+    }
   };
 
-  const deleteTask = (id: string) => {
-    setTodos(todos.filter((todo) => todo.id !== id));
-    setSelectedTasks(selectedTasks.filter((taskId) => taskId !== id));
+  const deleteTask = async (id: string) => {
+    const targetTodo = todos.find((todo) => todo.id === id);
+    if (!targetTodo) return;
+
+    if (thisUser && isCloud) {
+      await cloudUtils.remove("todos", thisUser.id, id);
+    }
+
+    // Always update local state
+    setTodos((prev) => prev.filter((todo) => todo.id !== id));
+    setSelectedTasks((prev) => prev.filter((taskId) => taskId !== id));
   };
 
-  const deleteSelectedTasks = () => {
-    setTodos(todos.filter((todo) => !selectedTasks.includes(todo.id)));
+  const deleteSelectedTasks = async () => {
+    if (thisUser && isCloud) {
+      const deletePromises = selectedTasks.map((id) =>
+        cloudUtils.remove("todos", thisUser.id, id),
+      );
+      await Promise.all(deletePromises);
+    }
+
+    // Always update local state
+    setTodos((prev) => prev.filter((todo) => !selectedTasks.includes(todo.id)));
     setSelectedTasks([]);
   };
 
-  const restoreTask = (id: string) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, archived: false } : todo,
-      ),
+  const restoreTask = async (id: string) => {
+    const targetTodo = todos.find((todo) => todo.id === id);
+    if (!targetTodo) return;
+
+    const updatedTodo = { ...targetTodo, archived: false };
+
+    // Sync change with storage
+    if (thisUser && isCloud) {
+      await cloudUtils.set("todos", updatedTodo, thisUser.id);
+    }
+
+    // Always update local state
+    setTodos((prev) =>
+      prev.map((todo) => (todo.id === id ? updatedTodo : todo)),
     );
-    setSelectedTasks(selectedTasks.filter((taskId) => taskId !== id));
+    setSelectedTasks((prev) => prev.filter((taskId) => taskId !== id));
   };
 
-  const updateTaskText = (id: string, text: string) => {
-    setTodos(todos.map((todo) => (todo.id === id ? { ...todo, text } : todo)));
-  };
+  const updateTaskText = async (id: string, text: string) => {
+    const targetTodo = todos.find((todo) => todo.id === id);
+    if (!targetTodo) return;
 
-  const updateDescription = (id: string, description: string) => {
-    setTodos(
-      todos.map((todo) => (todo.id === id ? { ...todo, description } : todo)),
+    const updatedTodo = { ...targetTodo, text };
+
+    // Sync change with storage
+    if (thisUser && isCloud) {
+      await cloudUtils.set("todos", updatedTodo, thisUser.id);
+    }
+
+    // Always update local state
+    setTodos((prev) =>
+      prev.map((todo) => (todo.id === id ? updatedTodo : todo)),
     );
   };
 
-  const updatePriority = (id: string, priority: string) => {
-    setTodos(
-      todos.map((todo) => (todo.id === id ? { ...todo, priority } : todo)),
+  const updateDescription = async (id: string, description: string) => {
+    const targetTodo = todos.find((todo) => todo.id === id);
+    if (!targetTodo) return;
+
+    const updatedTodo = { ...targetTodo, description };
+
+    // Sync change with storage
+    if (thisUser && isCloud) {
+      await cloudUtils.set("todos", updatedTodo, thisUser.id);
+    }
+
+    // Always update local state
+    setTodos((prev) =>
+      prev.map((todo) => (todo.id === id ? updatedTodo : todo)),
+    );
+  };
+
+  const updatePriority = async (id: string, priority: string) => {
+    const targetTodo = todos.find((todo) => todo.id === id);
+    if (!targetTodo) return;
+
+    const updatedTodo = { ...targetTodo, priority };
+
+    // Sync change with storage
+    if (thisUser && isCloud) {
+      await cloudUtils.set("todos", updatedTodo, thisUser.id);
+    }
+
+    // Always update local state
+    setTodos((prev) =>
+      prev.map((todo) => (todo.id === id ? updatedTodo : todo)),
     );
   };
 
@@ -213,14 +342,22 @@ export function Todo() {
     }
   };
 
-  const updateEta = (date: Date) => {
+  const updateEta = async (date: Date) => {
     if (!selectedTodoId) return;
-    setTodos(
-      todos.map((todo) =>
-        todo.id === selectedTodoId
-          ? { ...todo, createdAt: date.getTime() }
-          : todo,
-      ),
+
+    const targetTodo = todos.find((todo) => todo.id === selectedTodoId);
+    if (!targetTodo) return;
+
+    const updatedTodo = { ...targetTodo, createdAt: date.getTime() };
+
+    // Sync change with storage
+    if (thisUser && isCloud) {
+      await cloudUtils.set("todos", updatedTodo, thisUser.id);
+    }
+
+    // Always update local state and UI controls
+    setTodos((prev) =>
+      prev.map((todo) => (todo.id === selectedTodoId ? updatedTodo : todo)),
     );
     setEtaDialogOpen(false);
     setSelectedTodoId(null);
@@ -267,7 +404,7 @@ export function Todo() {
         <Tabs
           defaultValue="active"
           value={activeTab}
-          onValueChange={setActiveTab}
+          onValueChange={activeChange}
         >
           <TabsList className="grid grid-cols-2">
             <TabsTrigger value="active">{t("active")}</TabsTrigger>
@@ -296,63 +433,63 @@ export function Todo() {
         />
       </div>
 
-      {isAdding && activeTab === "active" && (
+      {activeTab === "active" && (
         <>
-          <div className="mt-2 flex items-start gap-2 p-1">
-            <textarea
-              autoFocus
-              ref={textareaRef}
-              value={newTaskText}
-              onChange={(e) => {
-                setNewTaskText(e.target.value);
-                // Auto-resize the textarea
-                autoResizeTextarea(e.target);
-              }}
-              placeholder={t("enterTask")}
-              className="flex-1 min-h-[36px] p-2 rounded-md border border-input bg-transparent text-sm resize-none overflow-hidden focus:outline-none focus:ring-1 focus:ring-ring"
-              onKeyDown={(e) => {
-                // Allow Enter to create a new line
-                if (e.key === "Enter" && e.ctrlKey) {
-                  e.preventDefault();
-                  addTask(newTaskText);
-                }
-              }}
-              rows={1}
-            />
-            <div className="flex gap-2">
+          {isAdding ? (
+            <section>
+              <div className="mt-2 flex items-start gap-2 p-1">
+                <textarea
+                  autoFocus
+                  ref={textareaRef}
+                  value={newTaskText}
+                  onChange={(e) => {
+                    setNewTaskText(e.target.value);
+                    autoResizeTextarea(e.target);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && e.ctrlKey) {
+                      e.preventDefault();
+                      addTask(newTaskText);
+                    }
+                  }}
+                  placeholder={t("enterTask")}
+                  className="flex-1 min-h-[36px] p-2 rounded-md border border-input bg-transparent text-sm resize-none overflow-hidden focus:outline-none focus:ring-1 focus:ring-ring"
+                  rows={1}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    disabled={!newTaskText}
+                    size="sm"
+                    onClick={() => addTask(newTaskText)}
+                  >
+                    {t("addTask")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setIsAdding(false)}
+                  >
+                    {t("cancel")}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 ml-2 mb-2 hidden md:block">
+                Press Ctrl+Enter to save
+              </p>
+            </section>
+          ) : (
+            <div className="p-2 flex justify-center">
               <Button
-                disabled={!newTaskText}
-                size="sm"
-                onClick={() => addTask(newTaskText)}
+                variant="ghost"
+                className="text-primary w-full"
+                onClick={() => setIsAdding(true)}
               >
+                <Plus className="h-4 w-4 mr-2" />
                 {t("addTask")}
               </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setIsAdding(false)}
-              >
-                {t("cancel")}
-              </Button>
             </div>
-          </div>
-          <div className="text-xs text-muted-foreground mt-1 ml-2 mb-2 hidden md:block">
-            Press Ctrl+Enter to save
-          </div>
+          )}
         </>
-      )}
-
-      {!isAdding && activeTab === "active" && (
-        <div className="p-2 flex justify-center">
-          <Button
-            variant="ghost"
-            className="text-primary w-full"
-            onClick={() => setIsAdding(true)}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            {t("addTask")}
-          </Button>
-        </div>
       )}
 
       {activeTab === "archived" && (

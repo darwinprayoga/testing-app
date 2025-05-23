@@ -57,7 +57,7 @@ export function PwaDrawer() {
         ref={pwaInstallRef}
         name={"Clipbored"}
         icon={"/logo.svg"}
-        onPwaInstallAvailableEvent={(event) => console.log(event)}
+        onPwaInstallAvailableEvent={(event: any) => console.log(event)}
       ></PWAInstall>
 
       {pwaInstallRef.current?.isInstallAvailable && (

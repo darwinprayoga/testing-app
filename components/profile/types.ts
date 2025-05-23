@@ -2,9 +2,9 @@ import { StorageType } from "@/contexts/storage-context";
 
 export interface User {
   username: string;
+  uid: string;
   email: string;
   image: string;
-  isLoggedIn: boolean;
   hasPremium: boolean;
 }
 
@@ -18,9 +18,7 @@ export interface ProfileTabProps {
 }
 
 export interface DataStorageTabProps {
-  user: User;
   storageType: string;
-  handleDataStorageChange: (value: StorageType) => void;
   openResetDialog: () => void;
   getCookieExpirationText: () => string;
 }

@@ -40,6 +40,8 @@ import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/contexts/language-context";
 import { useStorage } from "@/contexts/storage-context";
 import { useActivity } from "@/contexts/activity-context";
+import { useAuth } from "@/contexts/auth-context";
+import { cloudUtils } from "@/utils/storage-utils";
 
 type AccessLevel = "editor" | "viewer" | "commenter";
 
@@ -78,26 +80,76 @@ export function ShareDrawer() {
 
   const { getItem, setItem, isStorageReady } = useStorage();
   const { recordActivity, getLastActivity } = useActivity();
+  const { thisUser, isCloud } = useAuth();
   const { t } = useLanguage();
-
   const initializedRef = useRef(false);
-
   const [currentUrl, setCurrentUrl] = useState("");
 
-  useEffect(() => {
-    setCurrentUrl(window.location.href);
-  }, []);
+  type ShareSettingKey = "shareDrawerOpen";
 
+  const loadSetting = async (
+    key: ShareSettingKey,
+    setter: (val: any) => void,
+  ) => {
+    try {
+      if (thisUser && isCloud) {
+        const [settings] = await Promise.all([
+          cloudUtils.get("settings", thisUser.id),
+        ]);
+        const value = settings?.[0]?.[key];
+        if (value !== undefined) setter(value);
+      } else {
+        if (!isStorageReady) return;
+        const value = await getItem(key);
+        if (value !== undefined) setter(value);
+      }
+    } catch (error) {
+      console.error(`Failed to load setting "${key}":`, error);
+    }
+  };
+
+  const updateSetting = async (
+    key: ShareSettingKey,
+    value: any,
+    setter: (val: any) => void,
+  ) => {
+    try {
+      if (thisUser && isCloud) {
+        await cloudUtils.set(
+          "settings",
+          { uid: thisUser.id, [key]: value },
+          thisUser.id,
+        );
+      }
+      setter(value);
+    } catch (error) {
+      console.error(`Failed to update setting "${key}":`, error);
+    }
+  };
+
+  // Loaders mapping
+  const shareSettingLoaders: Record<ShareSettingKey, (val: any) => void> = {
+    shareDrawerOpen: setIsDrawerOpen,
+  };
+
+  // Load settings
   useEffect(() => {
-    if (!isStorageReady) return;
-    getItem("shareDrawerOpen").then((savedState) => {
-      if (savedState) setIsDrawerOpen(savedState);
+    Object.entries(shareSettingLoaders).forEach(([key, setter]) => {
+      loadSetting(key as ShareSettingKey, setter);
     });
-  }, [isStorageReady, getItem]);
+  }, [isStorageReady, getItem, thisUser, isCloud]);
+
+  // Update the handleDrawerChange function:
+  const handleDrawerChange = (value: boolean) => {
+    updateSetting("shareDrawerOpen", value, setIsDrawerOpen);
+
+    if (!isStorageReady) return;
+    setItem("shareDrawerOpen", value);
+  };
 
   useEffect(() => {
-    if (isStorageReady) setItem("shareDrawerOpen", isDrawerOpen);
-  }, [isDrawerOpen, isStorageReady, setItem]);
+    setCurrentUrl(location.href);
+  }, []);
 
   useEffect(() => {
     if (initializedRef.current) return;
@@ -173,7 +225,7 @@ export function ShareDrawer() {
   );
 
   return (
-    <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+    <Drawer open={isDrawerOpen} onOpenChange={handleDrawerChange}>
       <DrawerTrigger asChild>
         <button
           aria-label={"Share"}
@@ -356,7 +408,9 @@ export function ShareDrawer() {
           </div>
 
           <DrawerFooter>
-            <Button onClick={() => setIsDrawerOpen(false)}>{t("done")}</Button>
+            <Button onClick={() => handleDrawerChange(false)}>
+              {t("done")}
+            </Button>
             <DrawerClose asChild>
               <Button variant="outline">{t("cancel")}</Button>
             </DrawerClose>
