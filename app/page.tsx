@@ -6,7 +6,7 @@ import { ProfileDrawer } from "@/components/profile/profile-drawer";
 import { PwaDrawer } from "@/components/pwa-drawer";
 import { ShareDrawer } from "@/components/share-drawer";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { ClipboardIcon, ListTodo } from "lucide-react";
+import { ClipboardIcon, ListTodo, RefreshCcw } from "lucide-react";
 import { SettingsDrawer } from "@/components/settings/settings-drawer";
 import { useLanguage } from "@/contexts/language-context";
 import Image from "next/image";
@@ -17,6 +17,7 @@ import { CookieExpirationToast } from "@/components/cookie-expiration-toast";
 import dynamic from "next/dynamic";
 import { cloudUtils } from "@/utils/storage-utils";
 import { useAuth } from "@/contexts/auth-context";
+import { Button } from "@/components/ui/button";
 
 const Clipboard = dynamic(() => import("@/components/clipboard/clipboard"), {
   ssr: false, // Optional: disables SSR
@@ -162,7 +163,16 @@ export default function Home() {
             <span className="text-xs font-semibold text-primary">BETA</span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          <Button
+            onClick={() => location.reload()}
+            title="Refresh"
+            variant="ghost"
+            size="icon"
+            className="text-primary"
+          >
+            <RefreshCcw className="h-5 w-5" />
+          </Button>
           <SettingsDrawer />
           <ProfileDrawer />
         </div>
