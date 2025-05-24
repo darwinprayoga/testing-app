@@ -111,14 +111,33 @@ export default function Home() {
     setItem("activeTab", value);
   };
 
-  if (!isStorageReady) {
-    return null; // Initial blank render
+  // Render storage and load
+  const [hasCheckedStorage, setHasCheckedStorage] = useState(false);
+  const [readyToRender, setReadyToRender] = useState(false);
+
+  useEffect(() => {
+    // Only runs on the client
+    if (!isStorageReady) {
+      const hasReloaded = sessionStorage.getItem("hasReloadedForStorage");
+
+      if (!hasReloaded) {
+        sessionStorage.setItem("hasReloadedForStorage", "true");
+        location.reload();
+      }
+    } else {
+      setReadyToRender(true);
+    }
+
+    setHasCheckedStorage(true);
+  }, [isStorageReady]);
+
+  if (!hasCheckedStorage || !readyToRender) {
+    return null;
   }
 
   if (isLoading) {
-    return <LoadingScreen />; // Show loading screen after storage is ready
+    return <LoadingScreen />;
   }
-
   return (
     <main className="flex min-h-screen flex-col items-center p-4 md:p-8">
       {/* Cookie expiration toast component */}
