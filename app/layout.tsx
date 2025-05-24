@@ -12,6 +12,7 @@ import { Toaster } from "@/components/toaster";
 import { AuthProvider } from "@/contexts/auth-context";
 import { CleanupHash } from "@/components/cleanup-hash";
 import { AutoRegister } from "@/components/auto-register";
+import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -52,6 +53,7 @@ export default function RootLayout({
         className={`${inter.className} font-custom`}
         suppressHydrationWarning
       >
+        <Analytics />
         <NextThemesProvider
           attribute="class"
           defaultTheme="system"
