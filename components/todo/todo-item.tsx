@@ -58,7 +58,7 @@ export function TodoItemComponent({
   // auto resize realtime
   useEffect(() => {
     autoResizeTextarea(textareaRef.current);
-  }, [editValue]);
+  }, [editValue, editingField]);
 
   useEffect(() => {
     autoResizeTextarea(descRef.current);

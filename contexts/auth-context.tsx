@@ -134,9 +134,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { error } = await client.auth.signInWithOAuth({
         provider: "google",
-        options: {
-          redirectTo: `${location.href}/auth/callback`,
-        },
       });
 
       setStorageType("localStorage");
