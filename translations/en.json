@@ -189,6 +189,7 @@
     "usernameAlreadyTaken": "Username is already taken.",
     "usernameCheckFailed": "Failed to check username. Please try again.",
     "error": "Error",
-    "somethingWentWrong": "Something went wrong. Please try again later."
+    "somethingWentWrong": "Something went wrong. Please try again later.",
+    "clickToSetEta": "Click to set the ETA"
   }
 }

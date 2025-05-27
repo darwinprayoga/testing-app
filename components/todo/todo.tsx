@@ -180,11 +180,6 @@ export default function Todo() {
   const addTask = async (text: string) => {
     let data: TodoItem[];
 
-    // Add 1 hour and 1 minute = 61 minutes
-    const oneHourOneMinuteLater = new Date(
-      Date.now() + 61 * 60 * 1000,
-    ).getTime();
-
     const newTodo: TodoItem = {
       id: uuidv4(),
       text: text,
@@ -192,7 +187,7 @@ export default function Todo() {
       completed: false,
       archived: false,
       priority: "-",
-      createdAt: oneHourOneMinuteLater,
+      createdAt: 0,
     };
 
     data = [...todos, newTodo];
@@ -458,7 +453,7 @@ export default function Todo() {
         <>
           {isAdding ? (
             <section>
-              <div className="mt-2 flex items-start gap-2 p-1">
+              <div className="mt-2 flex items-center gap-2 p-1">
                 <textarea
                   autoFocus
                   ref={textareaRef}

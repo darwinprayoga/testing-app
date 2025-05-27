@@ -187,6 +187,7 @@
     "deselectAll": "Tout désélectionner",
     "deleteSelected": "Supprimer la sélection",
     "usernameAlreadyTaken": "Nom d'utilisateur déjà pris.",
-    "usernameCheckFailed": "Vérification du nom d'utilisateur échouée. Réessayez."
+    "usernameCheckFailed": "Vérification du nom d'utilisateur échouée. Réessayez.",
+    "clickToSetEta": "Cliquez pour définir l'ETA"
   }
 }

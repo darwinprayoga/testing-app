@@ -187,6 +187,7 @@
     "deselectAll": "Batalin Semua",
     "deleteSelected": "Hapus yang Dipilih",
     "usernameAlreadyTaken": "Username udah dipake orang lain",
-    "usernameCheckFailed": "Gagal ngecek username. Coba lagi nanti yaa~"
+    "usernameCheckFailed": "Gagal ngecek username. Coba lagi nanti yaa~",
+    "clickToSetEta": "Klik untuk atur ETA"
   }
 }

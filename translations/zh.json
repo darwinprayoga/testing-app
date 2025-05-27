@@ -187,6 +187,7 @@
     "deselectAll": "取消全选",
     "deleteSelected": "删除所选项",
     "usernameAlreadyTaken": "用户名已被占用。",
-    "usernameCheckFailed": "用户名检查失败，请重试。"
+    "usernameCheckFailed": "用户名检查失败，请重试。",
+    "clickToSetEta": "点击设置预计时间"
   }
 }

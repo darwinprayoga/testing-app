@@ -11,19 +11,21 @@ import type { EtaFormat } from "@/types/todo";
  * Format the ETA display
  */
 export const formatEta = (
-  timestamp: number,
+  timestamp: number | null | undefined,
   t: (key: string) => string,
 ): EtaFormat => {
+  if (!timestamp) {
+    return { text: t("clickToSetEta"), isUrgent: false };
+  }
+
   const date = new Date(timestamp);
   const now = new Date();
 
-  // If the date is in the past
   if (isPast(date) && !isToday(date)) {
-    const timeAgo = formatDistanceToNow(date, { addSuffix: true }); // e.g., "1 hour ago"
+    const timeAgo = formatDistanceToNow(date, { addSuffix: true });
     return { text: `${t("overdue")} ${timeAgo}`, isUrgent: true };
   }
 
-  // Calculate time remaining
   const timeRemaining = date.getTime() - now.getTime();
   const minutesRemaining = Math.floor(timeRemaining / (1000 * 60));
   const isUrgent = minutesRemaining <= 30 && minutesRemaining > 0;
