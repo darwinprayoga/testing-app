@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  RefObject,
-  useMemo,
-} from "react";
+import { useState, useEffect, useRef, useCallback, RefObject } from "react";
 import { useLanguage } from "@/contexts/language-context";
 import { useStorage } from "@/contexts/storage-context";
 import { getRandomJokes } from "@/data/jokes";
@@ -21,7 +14,6 @@ import { useTypingStatus } from "@/hooks/use-typing-status";
 import { cloudUtils } from "@/utils/storage-utils";
 import { useAuth } from "@/contexts/auth-context";
 import { v4 as uuidv4 } from "uuid";
-import debounce from "lodash/debounce"; // ✅ CORRECT for TS + Next.js 15
 
 const loadDummyData = async (
   lang: string,
@@ -110,31 +102,15 @@ export default function Clipboard({ isMobile = false }: ClipboardProps) {
     [thisUser, isCloud],
   );
 
-  // Debounced cloud update
-  const debouncedCloudUpdate = useMemo(
-    () =>
-      debounce((text: string) => {
-        updateSetting("clipboardText", text, setCurrentText);
-      }, 500),
-    [updateSetting],
-  );
-
-  // Cleanup debounce on unmount
-  useEffect(() => {
-    return () => {
-      debouncedCloudUpdate.cancel();
-    };
-  }, [debouncedCloudUpdate]);
-
   // Handle text changes with cloud or local update
   const handleChange = useCallback(
     (value: string) => {
       setCurrentText(value); // immediate UI update
       if (thisUser && isCloud) {
-        debouncedCloudUpdate(value); // delayed cloud sync
+        updateSetting("clipboardText", value, setCurrentText);
       }
     },
-    [thisUser, isCloud, debouncedCloudUpdate, setCurrentText],
+    [thisUser, isCloud, setCurrentText],
   );
 
   // Persist state to local storage (debounced)

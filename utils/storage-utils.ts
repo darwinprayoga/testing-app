@@ -2,6 +2,8 @@
 import { CloudKey, CloudTables } from "@/lib/relations";
 import { supabase } from "./supabase/client";
 
+import debounce from "lodash/debounce";
+
 /**
  * Utility to safely encode/decode JSON data for storage (e.g., cookies, localStorage).
  */
@@ -123,6 +125,8 @@ const convertKeysToCamelCase = (obj: any): any => {
   return obj;
 };
 
+const debouncedSetMap = new Map<string, ReturnType<typeof debounce>>();
+
 export const cloudUtils = {
   get: async (key: CloudKey, uid: string): Promise<any[]> => {
     const table = CloudTables[key];
@@ -137,12 +141,22 @@ export const cloudUtils = {
 
   set: async (key: CloudKey, payload: any, uid: string): Promise<void> => {
     if (payload === null || payload === undefined) return;
-    const table = CloudTables[key];
-    const fullPayload = { ...payload, uid };
-    const snakePayload = convertKeysToSnakeCase(fullPayload);
-    const { error } = await supabase.from(table).upsert(snakePayload);
 
-    if (error) console.error("Cloud set error:", error);
+    const mapKey = `${key}:${uid}`;
+    const fullPayload = { ...payload, uid };
+
+    if (!debouncedSetMap.has(mapKey)) {
+      const debounced = debounce(async (finalPayload: any) => {
+        const table = CloudTables[key];
+        const snakePayload = convertKeysToSnakeCase(finalPayload);
+        const { error } = await supabase.from(table).upsert(snakePayload);
+        if (error) console.error("Cloud set error:", error);
+      }, 500);
+
+      debouncedSetMap.set(mapKey, debounced);
+    }
+
+    debouncedSetMap.get(mapKey)!(fullPayload);
   },
 
   remove: async (key: CloudKey, uid: string, id?: string): Promise<void> => {
@@ -178,7 +192,6 @@ export const cloudUtils = {
     const table = CloudTables[key];
     let query = supabase.from(table).select("*");
 
-    // Dynamically apply conditions
     Object.entries(conditions).forEach(([field, value]) => {
       query = query.eq(field, value);
     });

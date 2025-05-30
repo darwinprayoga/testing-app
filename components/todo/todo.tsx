@@ -11,11 +11,10 @@ import { TodoEtaDialog } from "./todo-eta-dialog";
 import { getRandomJokes } from "@/data/jokes";
 import { useDebouncedCallback } from "use-debounce";
 import { autoResizeTextarea } from "@/utils/todo-utils";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cloudUtils } from "@/utils/storage-utils";
 import { useAuth } from "@/contexts/auth-context";
 import { v4 as uuidv4 } from "uuid";
-import debounce from "lodash/debounce"; // ✅ CORRECT for TS + Next.js 15
 
 export default function Todo() {
   const [todos, setTodos] = useState<TodoItem[]>([]);
@@ -298,22 +297,6 @@ export default function Todo() {
     );
   };
 
-  // Debounced cloud update
-  const debouncedCloudUpdate = useMemo(
-    () =>
-      debounce(async (value: any, uid: string) => {
-        await cloudUtils.set("todos", value, uid);
-      }, 500),
-    [cloudUtils],
-  );
-
-  // Cleanup debounce on unmount
-  useEffect(() => {
-    return () => {
-      debouncedCloudUpdate.cancel();
-    };
-  }, [debouncedCloudUpdate]);
-
   // Handle desc changes with cloud or local update
   const updateDescription = async (id: string, description: string) => {
     const targetTodo = todos.find((todo) => todo.id === id);
@@ -323,7 +306,7 @@ export default function Todo() {
 
     // Sync change with storage
     if (thisUser && isCloud) {
-      debouncedCloudUpdate(updatedTodo, thisUser.id);
+      await cloudUtils.set("todos", updatedTodo, thisUser.id);
     }
 
     // Always update local state
