@@ -190,6 +190,7 @@
     "usernameCheckFailed": "No se pudo verificar el nombre de usuario. Inténtalo de nuevo.",
     "error": "Error",
     "somethingWentWrong": "Algo salió mal. Por favor, inténtalo más tarde.",
-    "clickToSetEta": "Haz clic para establecer la ETA"
+    "clickToSetEta": "Haz clic para establecer la ETA",
+    "confirmPremiumMessage": "Las funciones premium son gratuitas solo durante el período BETA. ¿Desea continuar?"
   }
 }

@@ -188,6 +188,7 @@
     "deleteSelected": "Hapus yang Dipilih",
     "usernameAlreadyTaken": "Username udah dipake orang lain",
     "usernameCheckFailed": "Gagal ngecek username. Coba lagi nanti yaa~",
-    "clickToSetEta": "Klik untuk atur ETA"
+    "clickToSetEta": "Klik untuk atur ETA",
+    "confirmPremiumMessage": "Fitur premium hanya gratis selama masa BETA. Apakah Anda ingin melanjutkan?"
   }
 }

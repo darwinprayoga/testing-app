@@ -190,6 +190,7 @@
     "usernameCheckFailed": "Failed to check username. Please try again.",
     "error": "Error",
     "somethingWentWrong": "Something went wrong. Please try again later.",
-    "clickToSetEta": "Click to set the ETA"
+    "clickToSetEta": "Click to set the ETA",
+    "confirmPremiumMessage": "Premium features are only free during the BETA period. Do you want to continue?"
   }
 }

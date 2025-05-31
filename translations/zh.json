@@ -188,6 +188,7 @@
     "deleteSelected": "删除所选项",
     "usernameAlreadyTaken": "用户名已被占用。",
     "usernameCheckFailed": "用户名检查失败，请重试。",
-    "clickToSetEta": "点击设置预计时间"
+    "clickToSetEta": "点击设置预计时间",
+    "confirmPremiumMessage": "高级功能仅在测试版期间免费。您想继续吗？"
   }
 }

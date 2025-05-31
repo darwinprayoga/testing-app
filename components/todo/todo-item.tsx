@@ -52,6 +52,7 @@ export function TodoItemComponent({
   );
   const [editValue, setEditValue] = useState<string>("");
   const [deletingId, setDeletingId] = useState<boolean>(false);
+  const [desc, setDesc] = useState(todo.description);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
 
@@ -115,6 +116,23 @@ export function TodoItemComponent({
     if (e.key === "Enter") {
       // Don't prevent default to allow the new line
       return;
+    }
+  };
+
+  // Keep local state in sync when `todo.description` changes externally
+  useEffect(() => {
+    setDesc(todo.description);
+  }, [todo.description]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setDesc(value);
+    autoResizeTextarea(e.target); // still keep auto-resize
+  };
+
+  const handleBlur = () => {
+    if (desc !== todo.description) {
+      onUpdateDescription(todo.id, desc); // Only update if changed
     }
   };
 
@@ -193,12 +211,9 @@ export function TodoItemComponent({
 
           {/* Description textarea field */}
           <textarea
-            value={todo.description}
-            onChange={(e) => {
-              onUpdateDescription(todo.id, e.target.value);
-              // Auto-resize the textarea
-              autoResizeTextarea(e.target);
-            }}
+            value={desc}
+            onChange={handleChange}
+            onBlur={handleBlur}
             onKeyDown={handleDescriptionKeyDown}
             placeholder={t("addDescription")}
             className="text-xs text-muted-foreground px-1 py-0.5 bg-transparent border-none focus:outline-none focus:ring-0 w-full resize-none overflow-hidden min-h-[20px]"

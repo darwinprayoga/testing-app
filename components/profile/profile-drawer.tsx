@@ -206,6 +206,13 @@ export function ProfileDrawer() {
 
     const newPremium = !user.hasPremium;
 
+    // Add confirmation before enabling premium
+    if (newPremium) {
+      const confirmed = confirm(t("confirmPremiumMessage"));
+
+      if (!confirmed) return; // User clicked Cancel
+    }
+
     try {
       await cloudUtils.set(
         "userProfile",
@@ -227,7 +234,6 @@ export function ProfileDrawer() {
 
       if (!newPremium) setStorageType("localStorage");
 
-      // Apply changes and reload
       setTimeout(() => {
         handleTabChange("data");
         location.reload();
